@@ -60,6 +60,31 @@ the header units and what is expected in the data/table units of each
 HDU.  Additional cards may exist but will raise warnings during schema
 validation.  Missing cards will raise errors.
 
+** Choice of FITS
+
+FITS format was chosen for the interchange file format for a number of
+reasons:
+
+ - A single interchange format is chosen to minimize the complexity
+   and effort to manage multiple formats. 
+
+ - An exchange file, instead of a direct connection to the database,
+   was chosen to keep the test stations loosely coupled to the
+   back-end and to accommodate their varied platforms.
+
+ - FITS is a common, well supported format in astrophysics with which
+   the test station authors are likely familiar.
+
+ - FITS files can be produced on the variety of platforms the test
+   stations use.
+
+ - The format is general-purpose has specific support for bitmapped
+   information such as CCD images.
+
+ - Some test results will include CCD images in FITS format that
+   need to be archived (if not directly imported into the DB) so such
+   files need to be accommodated in any case.
+
 * Primary Header Data Unit
 
 All tests must provide a common FITS primary HDU with the header
@@ -108,9 +133,9 @@ sections below.
 
 *** =ANAFILES= HDU 
 
-The =ANAFILES= HDU holds a single-column table of file names.  The
-file names are limited to 64 characters.  (FIXME: is this a necessary
-limitation?)
+The =ANAFILES= HDU holds a two-column table of file names and the SHA1
+digest of their contents.  The file names are limited to 64
+characters.  (FIXME: is this a necessary limitation?)
 
 *** =GAINS= HDU
 
@@ -146,7 +171,40 @@ Acceptance Test Results) module.  Each high-level module is described:
 ** Schema Representation
 
 The =lcatr.schema= module provides the definitive description of
-acceptable results files.  (FIXME: t.b.d.)
+acceptable results files.  The description is of the form of an
+extended data structure.
+
+At top level the schema for each type of result is described by an
+ordered list of per-HDU descriptions.  The first element is for the
+FITS Primary HDU and subsequent ones are for the result-specific HDUs.
+
+#+begin_src python
+(PrimaryHDU, Station1Result1HDU, Station1Result2HDU, ...)
+#+end_src
+
+Each HDU is described by a tuple.  The first item describes the FITS
+cards to be found in the header unit, if any, and the second describes
+the data/table unit, if any.
+
+#+begin_src python
+(HeaderDesc, TableOrDataDesc)
+#+end_src
+
+The HeaderDesc is a list of CardDesc:
+
+#+begin_src python
+(Card1Desc, Card2Desc, ...)
+#+end_src
+
+Each FITS card is described with an ordered tuple of
+
+ - name :: the name of the card as a string, 8 characters or less
+ - type :: the type of the card as a Python class object
+ - comment :: brief description used as a FITS comment
+ - description :: longer, free-form human-oriented text describing the card for generated documentation.
+
+
+
 
 ** FITS File Creation
 
