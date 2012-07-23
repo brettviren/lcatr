@@ -1,57 +1,173 @@
-LSST CCD Acceptance Testing File Schema
+#+TITLE:     LSST CCD Acceptance Testing File Schema
+#+AUTHOR:    Brett Viren
+#+EMAIL:     bv@bnl.gov
+#+DATE:      \today
+
+#+LATEX_HEADER: \usepackage{hyperref}
+#+LATEX_HEADER: \hypersetup{
+#+LATEX_HEADER:   hyperindex=true,
+#+LATEX_HEADER:   plainpages=false,
+#+LATEX_HEADER:   colorlinks=true,
+#+LATEX_HEADER:   linkcolor=black
+#+LATEX_HEADER: }
+
+#+DESCRIPTION:
+#+KEYWORDS:
+#+LANGUAGE:  en
+#+OPTIONS:   H:3 num:t toc:t \n:nil @:t ::t |:t ^:t -:t f:t *:t <:t
+#+OPTIONS:   TeX:t LaTeX:t skip:nil d:nil todo:t pri:nil tags:not-in-toc
+#+INFOJS_OPT: view:nil toc:nil ltoc:t mouse:underline buttons:0 path:http://orgmode.org/org-info.js
+#+EXPORT_SELECT_TAGS: export
+#+EXPORT_EXCLUDE_TAGS: noexport
+#+LINK_UP:
+#+LINK_HOME:
+#+XSLT:
+
+
+
+#+BEGIN_ABSTRACT
+The format for the files to exchange results from LSST CCD acceptance
+testing stations to the back-end database system is described.  Python
+modules for producing and validating files for compliance is
+presented.  (FIXME: this is still a draft in progress.)
+#+END_ABSTRACT
+
 
 * Overview
 
-Compliant files holding results of LSST CCD acceptance tests are in
-FITS format and follow the conventions described in this document.
-Every test station produces a file following a schema specific to that
-station but the FITS Primary Header Data Unit (HDU) follows a common
-schema.
+The LSST CCD acceptance tests consist of several stations each
+evaluating some aspect of the CCDs.  These tests run on a
+heterogeneous set of platforms.  All results are collected into a
+single back-end database.  In order to provide a well controlled and
+common interface to the database the heterogeneity of the test systems
+is hidden by requiring each to produce results in a common and well
+defined format.  These interchange files are then the sole input to
+the back-end database.  
 
-The schema defines what cards should be found in the headers and what
-is expected in the data/table areas of each HDU.  Additional cards may
-exist but will raise warnings during schema validation.  Missing cards
-will raise errors.
+As an aside, all tests are run using well defined versions of the
+testing software.  This version control is out-of-scope of this
+document except in that the version used is represented as a GIT
+commit SHA1 hash and is stored as one element in the files described
+here.
 
-* Common Primary Header Data Unit
+Compliant files are in FITS format and follow the conventions
+described in this document.  Every test station produces a file that
+begins with a station-independent FITS Primary Header Data Unit (HDU)
+followed by one or more station-dependent secondary HDUs.
+
+Specifically, the schema defines what FITS cards should be found in
+the header units and what is expected in the data/table units of each
+HDU.  Additional cards may exist but will raise warnings during schema
+validation.  Missing cards will raise errors.
+
+* Primary Header Data Unit
 
 All tests must provide a common FITS primary HDU with the header
 containing these FITS cards:
 
- - =TESTNAME= :: A canonical name for the test results.  Test names are documented below in the test-specific schema section.
- - =DATE-OBS= :: The date observed in =YYYY-MM-DDTHH:MM:SS= format, UTC.
- - =COMMIT= :: The SHA1 digest (in hex) for the commit that provides the code that produced this result. 
+ - =SCHEMAV= :: An integer representing what version of the schema the
+                PrimaryHDU was written with.
+
+ - =TESTNAME= :: A string holding the canonical name for the test
+                 results.  Test names are documented below in the
+                 test-specific schema section.
+ - =DATE-OBS= :: The date that the test was performed in
+                 =YYYY-MM-DDTHH:MM:SS= format, UTC.
+ - =COMMIT= :: The SHA1 digest hash (in hex) for the commit that
+               provides the code that produced this result.
+
+ - =CHECKSUM= :: Standard FITS check sum card
+
+ - =DATASUM= :: Standard FITS data sum card
 
 * Test-specific Schema
 
 Each test result file must implement the above FITS primary HDU.  In
-addition, each test provides one or more secondary FITS HDUs.  Each
-test must follow its schema to produce a valid file.  The schema to
-apply is determined by the value of the =TESTNAME= card.
+addition, each test must provide one or more secondary FITS HDUs.  The
+number and schema of these secondaries are specific to the result of
+each station.  Each test must follow its schema to produce a valid
+file.  The schema to apply is determined by the value of the
+=TESTNAME= card in the primary HDU.
+
+The schema of each test result is outlined below however the
+definitive descriptions are in the =lcatr.schema= Python module, also
+described below.
 
 ** Gain, Noise and Cold Spots
 
-This test is named =GainNoiseColdSpots= and provides secondary HDUs
-with the following =EXTNAME= card value:
+This test has the canonical name of =GainNoiseColdSpots= and provides
+four secondary HDUs with the following =EXTNAME= card value:
 
- - =ANAFILES= :: names of files used in the analysis.  Each file name is stored in a card named like =FILE#=.
- - =GAINS= :: gains measured by linear fit (=LinGain=) and median (=MedGain=) and stored as columns in the table, one row per amplifier.
- - =NOISE= :: noise measured by over scan (=OvScNois=) and standard deviation (=SdevNois=) and stored as columns in table, one row per amplifier.
- - =COLDSPOT= :: one HDU for each cold spot with =AMPNUM= providing the amplifier number and =NCOLDPIX= providing the number of cold pixels.  The table holds columns =ColdX= and =ColdY= giving the spot centers in units of pixels.
+ - =ANAFILES= :: names of files used to produced these results
+ - =GAINS= :: measured gains
+ - =NOISE= :: measured noise
+ - =COLDSPOT= :: regions identified as having unacceptable response
+
+The schema of each of these secondary HDUs is described in the
+sections below.
+
+*** =ANAFILES= HDU 
+
+The =ANAFILES= HDU holds a single-column table of file names.  The
+file names are limited to 64 characters.  (FIXME: is this a necessary
+limitation?)
+
+*** =GAINS= HDU
+
+The =GAINS= HDU holds the gains of each amplifier measured with two
+methods.  Each are stored as columns in a table with one row per
+amplifier.  (FIXME: currently the column order implies amplifier
+number, should it be more explicit?)  Two methods are stored:
+=LinGain= measure by a linear fit and =MedGain= from the median.
+
+*** =NOISE= HDU
+
+The =NOISE= HDU contains measurements of the noise level of each
+amplifier measured by over scan (=OvScNois=) and standard deviation
+(=SdevNois=) and stored as columns in table, one row per amplifier.
+(FIXME: same question as above).
+
+*** =COLDSPOT= HDU
+
+The =COLDSPOT= HDU holds a table of any areas (spots) on the CCD that
+have below acceptable response.  A spot is described as an amplifier
+number, the number of pixels with low response and the x,y pixel
+number representing its center.  Each of these quantities are stored
+as a column in the table.
+
 
 * Support Code
 
+A number of Python modules exist to support producing and validating
+files that comply with this document in the =lcatr= (LSST CCD
+Acceptance Test Results) module.  Each high-level module is described:
+
+
 ** Schema Representation
 
-Describe how the Python code provides a representation of the schema
-for each test result....
+The =lcatr.schema= module provides the definitive description of
+acceptable results files.  (FIXME: t.b.d.)
 
 ** FITS File Creation
 
-Describe how to use the Python code to generate compliant FITS files
-from test result data....
+The =lcatr.results= module provides Python code to create compliant
+files.  Stations that use this module to produce their result files
+will guarantee that their files are acceptable for feeding to the
+back-end database.  (FIXME: t.b.d)
 
 ** FITS File Validation
 
-Describe how to use the Python code to validate a FITS file against
-the schema....
+The =lcatr.validation= module provides Python code to validate
+existing FITS files for compliance.  Stations that can not use
+=lcatr.results= to produce their files can use this module to validate
+that their result files will be accepted by the back-end database.
+(FIXME: t.d.b.)
+
+
+** Installation Requirements
+
+ - pyfits :: Python-FITS interface
+
+** Example use
+
+(FIXME: t.b.d.)
