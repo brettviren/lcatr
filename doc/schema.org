@@ -1,0 +1,57 @@
+LSST CCD Acceptance Testing File Schema
+
+* Overview
+
+Compliant files holding results of LSST CCD acceptance tests are in
+FITS format and follow the conventions described in this document.
+Every test station produces a file following a schema specific to that
+station but the FITS Primary Header Data Unit (HDU) follows a common
+schema.
+
+The schema defines what cards should be found in the headers and what
+is expected in the data/table areas of each HDU.  Additional cards may
+exist but will raise warnings during schema validation.  Missing cards
+will raise errors.
+
+* Common Primary Header Data Unit
+
+All tests must provide a common FITS primary HDU with the header
+containing these FITS cards:
+
+ - =TESTNAME= :: A canonical name for the test results.  Test names are documented below in the test-specific schema section.
+ - =DATE-OBS= :: The date observed in =YYYY-MM-DDTHH:MM:SS= format, UTC.
+ - =COMMIT= :: The SHA1 digest (in hex) for the commit that provides the code that produced this result. 
+
+* Test-specific Schema
+
+Each test result file must implement the above FITS primary HDU.  In
+addition, each test provides one or more secondary FITS HDUs.  Each
+test must follow its schema to produce a valid file.  The schema to
+apply is determined by the value of the =TESTNAME= card.
+
+** Gain, Noise and Cold Spots
+
+This test is named =GainNoiseColdSpots= and provides secondary HDUs
+with the following =EXTNAME= card value:
+
+ - =ANAFILES= :: names of files used in the analysis.  Each file name is stored in a card named like =FILE#=.
+ - =GAINS= :: gains measured by linear fit (=LinGain=) and median (=MedGain=) and stored as columns in the table, one row per amplifier.
+ - =NOISE= :: noise measured by over scan (=OvScNois=) and standard deviation (=SdevNois=) and stored as columns in table, one row per amplifier.
+ - =COLDSPOT= :: one HDU for each cold spot with =AMPNUM= providing the amplifier number and =NCOLDPIX= providing the number of cold pixels.  The table holds columns =ColdX= and =ColdY= giving the spot centers in units of pixels.
+
+* Support Code
+
+** Schema Representation
+
+Describe how the Python code provides a representation of the schema
+for each test result....
+
+** FITS File Creation
+
+Describe how to use the Python code to generate compliant FITS files
+from test result data....
+
+** FITS File Validation
+
+Describe how to use the Python code to validate a FITS file against
+the schema....
