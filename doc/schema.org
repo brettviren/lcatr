@@ -23,6 +23,8 @@
 #+LINK_HOME:
 #+XSLT:
 
+## http://lists.netisland.net/archives/plug/plug-2011-11/msg00088.html
+#+LaTeX_HEADER:\usepackage[margin=0.75in]{geometry}
 
 
 #+BEGIN_ABSTRACT
@@ -37,73 +39,125 @@ presented.  (FIXME: this is still a draft in progress.)
 
 The LSST CCD acceptance tests consist of several stations each
 evaluating some aspect of the CCDs.  These tests run on a
-heterogeneous set of platforms.  All results are collected into a
-single back-end database.  In order to provide a well controlled and
-common interface to the database the heterogeneity of the test systems
-is hidden by requiring each to produce results in a common and well
-defined format.  These interchange files are then the sole input to
-the back-end database.  
+heterogeneous set of platforms.  Results of these test are considered
+to be separated into two forms.  Part is a result summary suitable for
+storing in a database for later searching and report building.  The
+rest is considered ancillary and to be used for any post-testing
+detailed studies.  It is the summary results that this document
+addresses.
 
-As an aside, all tests are run using well defined versions of the
-testing software.  This version control is out-of-scope of this
-document except in that the version used is represented as a GIT
-commit SHA1 hash and is stored as one element in the files described
-here.
+To handle transferring summary information from a variety of sources
+into the database requires that the data be well formed and satisfy
+all the technical requirements needed for database access.  Direct
+database access by each test station would require many custom
+solutions.  Instead, an exchange file is produced in a format that all
+stations should be able to write.  In order to reduce complexity in
+the database ingest application, these files are required to follow a
+well defined format and schema.  It must be possible to validate these
+interchange files against their schema before ingesting to avoid
+polluting the database with wrong or inconsistent values.
 
-Compliant files are in FITS format and follow the conventions
-described in this document.  Every test station produces a file that
-begins with a station-independent FITS Primary Header Data Unit (HDU)
-followed by one or more station-dependent secondary HDUs.
+Besides the summary results themselves, this interchange file should
+encapsulate any important meta-data about the test, such as the
+version of the test software, as well as provide a means to reference
+the ancillary results.
 
-Specifically, the schema defines what FITS cards should be found in
-the header units and what is expected in the data/table units of each
-HDU.  Additional cards may exist but will raise warnings during schema
-validation.  Missing cards will raise errors.
+The FITS file format is used for these interchange files.  FITS is a
+natural choice in that it is general purpose but with specific
+features needed by the tests (in particular storage of bitmapped
+images).  It is also commonly used in astrophysics applications and
+well supported on the variety of test station platforms.
 
-** Choice of FITS
+#+caption: Overview of the acceptance testing result data handling.
+#+label: fig:overview
+[[./overview.pdf]]
 
-FITS format was chosen for the interchange file format for a number of
-reasons:
+Figure \ref{fig:overview} shows a cartoon of the handling of the
+result data from the test stations.  A station checks out its software
+and records the corresponding commit identifier (GIT SHA1 digest
+hash).  Runs the test and produces a FITS summary file in the
+interchange format described here and potentially additional ancillary
+files.  The commit identifier, references to teh ancillary files and
+the summary results themselves are written to the FITS summary file.
+When a FITS summary file is available an external process validates is
+and, if it passes, updates the database with the results.  If
+validation fails the overall controlling process (not shown) is
+notified.  Later, reports and additional post-test analysis can be
+performed by making queries to the database.  
+ 
+The rest of this document describes the file schema, that is how these
+FITS interchange files must organize their contents.
 
- - A single interchange format is chosen to minimize the complexity
-   and effort to manage multiple formats. 
+* Overview of the Schema
 
- - An exchange file, instead of a direct connection to the database,
-   was chosen to keep the test stations loosely coupled to the
-   back-end and to accommodate their varied platforms.
+The organization and conventions for the contents of the interchange
+files are described in this section.
 
- - FITS is a common, well supported format in astrophysics with which
-   the test station authors are likely familiar.
+** Hierarchy
 
- - FITS files can be produced on the variety of platforms the test
-   stations use.
+The layout of the contents is organized into a hierarchy.  This
+hierarchy can be thought of as a set of nested and ordered lists.
 
- - The format is general-purpose has specific support for bitmapped
-   information such as CCD images.
+ - /result/ :: \to (/PrimaryHDU/, /FragmentHDU/, ...)
+ - /PrimaryHDU/ :: \to /HDU/
+ - /FragmentHDU/ :: \to /HDU/
+ - /HDU/ :: \to (/header/, /payload/)
+ - /payload/ :: \to either a /table/ or /data/
+ - /header/ :: \to (/card/, /card/, ...)
+ - /table/ :: \to (/column/, /column/, ...)
+ - /data/ :: \to (t.b.d.)
+ - /card/ :: \to (/name/, /typeobj/, /comment/, /description/)
+ - /column/ :: \to (/name/, /typeobj/, /description/)
+ - /name/ :: \to a string, 8 characters or less
+ - /typeobj/ :: \to an instance of a Python class representing the type of the element
+ - /comment/ :: \to a short FITS comment
+ - /description/ :: \to a free form, comprehensive description of the element
 
- - Some test results will include CCD images in FITS format that
-   need to be archived (if not directly imported into the DB) so such
-   files need to be accommodated in any case.
+** Conventions
+ 
+The content of each level of this hierarchy must follow certain
+conventions.  The important ones are described below.
 
-* Primary Header Data Unit
+*** Header Data Unit
 
-All tests must provide a common FITS primary HDU with the header
-containing these FITS cards:
+All header data units (/PrimaryHDU/ or /FragmentHDU/) must contain a
+header unit an optional payload unit.  If there is no payload, this
+second unit is represented by Python's None object.
 
- - =SCHEMAV= :: An integer representing what version of the schema the
-                PrimaryHDU was written with.
+*** Header Unit
 
- - =TESTNAME= :: A string holding the canonical name for the test
-                 results.  Test names are documented below in the
-                 test-specific schema section.
+All header units must contains the following cards:
+
+ - =EXTNAME= :: Standard naming mechanism for a FITS HDU, when in the
+                primary HDU it holds the canonical name for the test
+                and determines which named, secondary HDUs are
+                expected.  Test names are documented below in the
+                test-specific schema section.
+ - =CHECKSUM= :: Standard FITS check sum card.
+ - =DATASUM= :: Standard FITS data sum card, will be '0' if thee is no payload.
+ - =SCHEMAV= :: Version of the schema used in this HDU.
+
+The header of the FITS primary HDU must contain these additional cards:
+
  - =DATE-OBS= :: The date that the test was performed in
                  =YYYY-MM-DDTHH:MM:SS= format, UTC.
  - =COMMIT= :: The SHA1 digest hash (in hex) for the commit that
                provides the code that produced this result.
 
- - =CHECKSUM= :: Standard FITS check sum card
+Secondary HDU headers contain any result fragment specific cards as
+detailed in the schema itself.
 
- - =DATASUM= :: Standard FITS data sum card
+*** Type Objects
+
+Cards and Columns must specify their type with an instance of a Python
+class.  Classes from the =numpy= module are preferred.
+
+* Schema Definition
+
+The schema is defined as a Python data structure the parallels the
+hierarchy, encodes the conventions listed above and lists the specific
+entries that each concrete element will provide.
+
 
 * Test-specific Schema
 
@@ -171,8 +225,10 @@ Acceptance Test Results) module.  Each high-level module is described:
 ** Schema Representation
 
 The =lcatr.schema= module provides the definitive description of
-acceptable results files.  The description is of the form of an
-extended data structure.
+acceptable results files.  The description is in the form of a
+hierarchy built from Python tuples.
+
+*** Top level
 
 At top level the schema for each type of result is described by an
 ordered list of per-HDU descriptions.  The first element is for the
@@ -182,13 +238,19 @@ FITS Primary HDU and subsequent ones are for the result-specific HDUs.
 (PrimaryHDU, Station1Result1HDU, Station1Result2HDU, ...)
 #+end_src
 
-Each HDU is described by a tuple.  The first item describes the FITS
-cards to be found in the header unit, if any, and the second describes
-the data/table unit, if any.
+*** HDU
+
+Each HDU is described by a triple.  The first item is the canonical
+name for the HDU.  For the FITS primary HDU the name must be the
+canonical name for the result as a whole (ie, the name for the test
+station).  The second describes the FITS cards specific to the HDU's
+header unit and the third describes the data/table unit.
 
 #+begin_src python
 (HeaderDesc, TableOrDataDesc)
 #+end_src
+
+*** Header Unit
 
 The HeaderDesc is a list of CardDesc:
 
@@ -196,14 +258,36 @@ The HeaderDesc is a list of CardDesc:
 (Card1Desc, Card2Desc, ...)
 #+end_src
 
-Each FITS card is described with an ordered tuple of
+Each HDU-specific FITS card is described with an ordered tuple of
 
  - name :: the name of the card as a string, 8 characters or less
  - type :: the type of the card as a Python class object
  - comment :: brief description used as a FITS comment
  - description :: longer, free-form human-oriented text describing the card for generated documentation.
 
+In addition to any HDU-specific cards, every header must contain these
+standard cards:
 
+ - =EXTNAME= :: The canonical name of the HDU.  In the case of the
+                FITS primary HDU this is the canonical name for the
+                result as a whole (ie, the name of the test station).
+ - =SCHEMAV= :: An integer representing what version of the schema the
+                HDU was written with.
+ - =CHECKSUM= :: standard FITS checksum 
+ - =DATASUM= :: standard FITS datasum ('0' when if no data/table unit)
+
+In addition, every header must have a =EXTNAME= to name the header but
+this is specified at the HDU level (see above).  There may be other
+book keeping cards placed to manage the table/data unit.  They are not
+explicitly specified in this schema.
+
+*** Table Unit
+
+Tables are defined as a list of columns.  Columns are specified with
+the following elements:
+
+ - name :: name of the column
+ - type :: the type of the column as a Python class object
 
 
 ** FITS File Creation
@@ -212,6 +296,7 @@ The =lcatr.results= module provides Python code to create compliant
 files.  Stations that use this module to produce their result files
 will guarantee that their files are acceptable for feeding to the
 back-end database.  (FIXME: t.b.d)
+
 
 ** FITS File Validation
 
@@ -225,6 +310,7 @@ that their result files will be accepted by the back-end database.
 ** Installation Requirements
 
  - pyfits :: Python-FITS interface
+
 
 ** Example use
 

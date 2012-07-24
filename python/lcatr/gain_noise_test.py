@@ -65,6 +65,8 @@ def primary_hdu(test_name, test_date, commit_hash):
     '''
 http://heasarc.gsfc.nasa.gov/docs/heasarc/ofwg/docs/rates/ogip_93_003/ogip_93_003.html
 http://heasarc.nasa.gov/docs/heasarc/ofwg/ofwg_recomm.html
+
+alternate time stamps:
 DATE-OBS= '09/07/93'         / date of observation start (dd/mm/yy)
 TIME-OBS= '01:02:26.003'     / time of observation start (hh:mm:ss.ddddd)
 DATE-END= '09/07/93'         / date of observation end (dd/mm/yy)
@@ -87,7 +89,7 @@ TIME-END= '02:45:02.45'      / time of observation end (hh:mm:ss.ddddd)
     ret.add_checksum()
     return ret
 
-def gain_noise_payload(lgain, mgain, onoise, snoise, spots, flist):
+def gain_noise_payload(lgain, mgain, onoise, snoise, spots, flist, fhash):
     '''
     Produce a list of three HDUs with the payload information from the
     gain, noise and cold spots test.
@@ -101,8 +103,9 @@ def gain_noise_payload(lgain, mgain, onoise, snoise, spots, flist):
     ret = []
 
     # analyzed files
-    lc = Column(name='FileName', format='A64', array=np.array(flist))
-    ft = new_table([lc])
+    fc = Column(name='FileName', format='A64', array=np.array(flist))
+    hc = Column(name='SHA1Hash', format='A64', array=np.array(fhash))
+    ft = new_table([fc,hc])
     ft.name = 'AnaFiles'
     ret.append(ft)
 
@@ -121,10 +124,11 @@ def gain_noise_payload(lgain, mgain, onoise, snoise, spots, flist):
     ret.append(nt)
 
     # cold spots
-    ampnum = np.array([], dtype = np.int16)
-    pixcount = np.array([], dtype = np.int16)
-    spotx = np.array([], dtype = np.int16)
-    spoty = np.array([], dtype = np.int16)
+    # ampnum = np.array([], dtype = np.int16)
+    # pixcount = np.array([], dtype = np.int16)
+    # spotx = np.array([], dtype = np.int16)
+    # spoty = np.array([], dtype = np.int16)
+    ampnum = []; pixcount = []; spotx = []; spoty = []
     
     for spot in spots:
         an = spot[0]
@@ -132,18 +136,20 @@ def gain_noise_payload(lgain, mgain, onoise, snoise, spots, flist):
         nspots = len(spot[2:])
         nper = nc/nspots
         for x,y in spot[2:]:
-            ampnum = np.append(ampnum, an)
-            pixcount = np.append(pixcount, nper)
-            spotx = np.append(spotx, x)
-            spoty = np.append(spoty, y)
+            ampnum.append(an)
+            pixcount.append(nper)
+            spotx.append(x)
+            spoty.append(y)
             continue            # over spots in amp
         continue                # over all amps
-    anc = Column(name='AmpNum', format='I', array=ampnum)
-    pcc = Column(name='PixCount', format='I', array=pixcount)
-    sxc = Column(name='SpotX', format='I', array=spotx)
-    syc = Column(name='SpotY', format='I', array=spoty)
+    print len(ampnum), ampnum
+    print len(pixcount), pixcount
+    anc = Column(name='AmpNum', format='I', array = ampnum)
+    pcc = Column(name='PixCount', format='I', array = pixcount)
+    sxc = Column(name='SpotX', format='I', array = spotx)
+    syc = Column(name='SpotY', format='I', array = spoty)
 
-    ct = new_table([anc,pcc,sxc,syc])
+    ct = new_table([anc,pcc,sxc,syc], tbtype='TableHDU')
     ct.name = 'ColdSpot'
     ret.append(ct)
 
@@ -166,7 +172,7 @@ if '__main__' == __name__:
 
     pl = gain_noise_payload(linear_fit_gains, median_gains, 
                             overscan_noise, stddev_noise, cold_spots,
-                            analyzed_files)
+                            analyzed_files, [sha1(f).hexdigest() for f in analyzed_files])
 
     hdul = HDUList([phdu]+pl)
     hdul.writeto(filename, checksum=True)
