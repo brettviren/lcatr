@@ -7,36 +7,41 @@ from schema import Card
 
 class ExtnameCard(Card):
     def __init__(self, value=None):
-        super(ExtnameCard,self).__init__('EXTNAME','str','Canonical Name',
-                                         'Canonical name for the HDU', value)
+        base = super(ExtnameCard,self)
+        base.__init__('EXTNAME','str','Canonical Name',
+                      'Canonical name for the HDU', value)
         return
     pass
 
 class SchemaVersionCard (Card):
     def __init__(self, value=0):
-        super(SchemaVersionCard,self).__init__('SchemaV', 'int16', 'Schema Version',
-                                               'Version of schema used by this HDU', value)
+        base = super(SchemaVersionCard,self)
+        base.__init__('SCHEMAV', 'int16', 'Schema Version',
+                      'Version of schema used by this HDU', value)
         return
     pass
 
 class TestNameCard(Card):
     def __init__(self, value=None):
-        super(TestNameCard,self).__init__('TestName', 'str', 'Canonical Test Name',
-                                          'Canonical test station name.', value)
+        base = super(TestNameCard,self)
+        base.__init__('TESTNAME', 'str', 'Canonical Test Name',
+                      'Canonical test station name.', value)
         return
     pass
 
 class TimeStampCard(Card):
     def __init__(self, value=None):
-        super(TimeStampCard,self).__init__('DATE-OBS', 'datetime', 'Timestamp',
-                                           'A date and time stamp', value)
+        base = super(TimeStampCard,self)
+        base.__init__('DATE-OBS', 'datetime', 'Timestamp',
+                      'A date and time stamp', value)
         return
     pass
 
 class CommitHashCard(Card):
     def __init__(self, value=None):
-        super(CommitHashCard,self).__init__('Commit',  'sha1', 'Commit hash',
-                                            'A GIT commit SHA1 digest hash.', value)
+        base = super(CommitHashCard,self)
+        base.__init__('COMMIT',  'sha1', 'Commit hash',
+                      'A GIT commit SHA1 digest hash.', value)
         return
     pass
 

@@ -5,10 +5,19 @@ Some specific columns
 
 from schema import Column
 
-FilePathColumn = Column('FileName', 'str',
-                        'A file path relative to $CCDTEST_ROOT')
-SHA1HashColumn = Column('SHA1Hash', 'sha1', 
-                        'A SHA1 digest hash.')
+class FilePathColumn(Column):
+    def __init__(self, filelist = None):
+        base = super(FilePathColumn,self)
+        base.__init__('FilePath', 'str', 'A file path',filelist)
+        return
+    pass
+
+class SHA1HashColumn(Column):
+    def __init__(self, sha1list = None):
+        base = super(SHA1HashColumn,self)
+        base .__init__('SHA1Hash', 'sha1', 'A SHA1 digest hash.',sha1list)
+        return
+    pass
 
 if __name__ == '__main__':
     from hashlib import sha1

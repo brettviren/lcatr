@@ -66,7 +66,9 @@ class HDU(Base):
         return
 
     def __str__(self):
-        ret = ['HDU %s: ', str(self.header)] + [str(p) for p in self.payload]
+        ret = ['[0x%x] HDU (%s): ' % (id(self), self.name())]
+        ret += [str(self.header)]
+        ret += [str(p) for p in self.payload]
         return '\n'.join(ret)
 
     def name(self):
@@ -91,7 +93,8 @@ class Header(Base):
         return
 
     def __str__(self):
-        ret = ['Header: %d cards:' % len(self.cards)] + [str(c) for c in self.cards]
+        ret = ['[0x%x] Header: %d cards:' % (id(self),len(self.cards))] 
+        ret += [str(c) for c in self.cards]
         return '\n'.join(ret)
 
     def validate(self):
@@ -117,7 +120,7 @@ class Header(Base):
         'Return name (EXTNAME) of this header'
         nc = self.card('EXTNAME')
         if not nc: return None
-        return nc.name
+        return nc.value
 
     pass
 

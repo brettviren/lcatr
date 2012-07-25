@@ -2,16 +2,12 @@
 
 import schema  
 import cards
+import tables
+import hdus
 
 result = schema.Result(
-    schema.HDU(
-        schema.Header([
-                cards.ExtnameCard('GainNoiseCold'),
-                cards.SchemaVersionCard(0),
-                ]),
-        None
-        ),
-    list()
+    hdus.PrimaryHDU('GainNoiseCold'),
+    [hdus.FileRefHDU([__file__])]
 )
 
 if __name__ == '__main__':
