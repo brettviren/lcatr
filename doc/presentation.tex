@@ -1,0 +1,368 @@
+\documentclass[bigger]{beamer}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{fixltx2e}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{float}
+\usepackage{wrapfig}
+\usepackage{soul}
+\usepackage{textcomp}
+\usepackage{marvosym}
+\usepackage{wasysym}
+\usepackage{latexsym}
+\usepackage{amssymb}
+\usepackage{hyperref}
+\usepackage{cancel}
+\usepackage[percent]{overpic}
+\usepackage{listings}
+\usepackage{color}
+\lstset{ %
+  basicstyle=\footnotesize,           % the size of the fonts that are used for the code
+  frame=single,                   % adds a frame around the code
+}
+
+\setbeamertemplate{navigation symbols}{}
+\useoutertheme{infolines}
+\usecolortheme[named=violet]{structure}
+\setbeamertemplate{items}[circle]
+
+\DeclareGraphicsExtensions{.pdf,.png,.jpg}
+\title[Data Handling]{CCD Acceptance Testing Data Handling}
+\author{Brett Viren and Tom Throwe}
+\institute[BNL]
+{
+  Physics Department
+
+  \includegraphics[height=1.5cm]{bnl-logo}
+
+  \includegraphics[height=1.5cm]{dyb_logo}
+}
+
+\date{\today}
+
+\definecolor{rootpink}{RGB}{255,0,255}
+\definecolor{macroyellow}{RGB}{255,215,0}
+
+\hypersetup{
+  pdfkeywords={},
+  pdfsubject={},
+  pdfcreator={pdflatex, beamer and emacs the digital blood, sweat and tears}}
+
+\begin{document}
+
+\maketitle
+
+\begin{frame}[fragile]
+  \frametitle{High Level Data Flow}
+  \includegraphics[width=\textwidth]{dataflow}
+  \begin{enumerate}
+  \item Test station produces result files.
+  \item Files are stored to location on disk.
+  \item Validated and uploaded to database.
+  \end{enumerate}
+
+  Intermediate files allow loose coupling between varied test station
+  platforms and database.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Job Harness - Version Control}
+  \begin{columns}
+    \begin{column}{0.5\paperwidth}
+      \begin{itemize}
+      \item Tests run in a common job harness (Linux and Windows).
+      \item Operator enters external parameters defining a run.
+      \item Station software from a specific commit checked out.
+      \item Test jobs run producing results.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.5\paperwidth}
+      \includegraphics[width=\textwidth]{job-harness}
+    \end{column}
+  \end{columns}
+
+  $\rightarrow$Currently at the conceptual level.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Station Results}
+
+  A station produces result files in three categories:
+
+  \begin{columns}
+    \begin{column}{0.5\paperwidth}
+      \begin{description}
+      \item[Metadata FITS] Describes test software and enumerates results
+        files and any auxiliary files.
+      \item[Result FITS] Result summary files to be parsed and uploaded
+        into the DB.
+      \item[Auxiliary] Any additional files or arbitrary type to archive.
+      \end{description}
+    \end{column}
+    \begin{column}{0.45\paperwidth}
+      \includegraphics[width=\textwidth]{files}
+    \end{column}
+  \end{columns}
+  All files are archived, first two types are parsed into LIMS.
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{Metadata FITS File} 
+
+  Collects information about all result files.  Here a ``test'' means
+  a run on a test station or an offline analysis.  4 HDUs:
+
+  \begin{enumerate}
+  \item Primary HDU, header only.
+    \begin{description}
+    \item[\texttt{TESTNAME}] a canonical name for the test.
+    \item[\texttt{DATE\_OBS}] UTC time stamp for when the test was run.
+    \item[\texttt{USERNAME}] Name for the test station operator or analyzer.
+    \end{description}
+  \item Test's software description consisting of list of main
+    programs and their GIT SHA1 commit hash and tag.  Lists are stored
+    in a FITS table.
+  \item List of FITS files to be parsed by LIMS (see next).  Stored as
+    a table of filenames and content SHA1 digest hashes.
+  \item List of all auxiliary files to be linked into the LIMS
+    database.  Lists stored as HDU 3.
+  \end{enumerate}
+
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{Result FITS File}
+  Collects all result data that will be parsed into LIMS.
+
+  Well defined schema:
+  \begin{enumerate}
+  \item Common PrimaryHDU for all tests.
+    \begin{description}
+    \item[\texttt{TESTNAME}] a canonical name for the test.
+    \item[\texttt{EXTNAME}] HDU schema name
+    \item[\texttt{SCHEMAVER}] schema version
+    \end{description}
+  \item Test-specific secondary HDUs with some common cards:
+    \begin{description}
+    \item[\texttt{EXTNAME}] name of schema this HDU follows
+    \item[\texttt{SCHEMAVER}] version of schema this HDU follows
+    \end{description}
+  \end{enumerate}
+
+  Many secondary HDUs will be identical and shared between different
+  result FITS schema.
+
+  A table/data-only HDU still must provide a standard, minimal set of
+  cards in the header.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Example - JimF's Gain/Noise/ColdSpot}
+  This result fits into 5 HDUs:
+  \begin{description}
+  \item[\texttt{Primary}] Common primary HDU
+  \item[\texttt{FileRefs}] Table HDU holding column for file paths and
+    one for file checksum (SHA1)
+  \item[\texttt{Gains}] Table HDU holding two columns of floats, one
+    for each gain measurement type.
+  \item[\texttt{Noises}] Table HDU holding two columns of floats, one
+    for each noise measurement type.
+  \item[\texttt{ColdSpot}] Table HDU holding four columns of ints,
+    amp\#, pixel count, spot X and spot Y.
+  \end{description}
+
+\end{frame}
+
+
+\section{Schema Representation In Python}
+
+\begin{frame}
+  \frametitle{Schema Definition in Python}
+
+  Three aspects to producing compliant files:
+  \begin{enumerate}
+  \item The format schema (ie, FITS as implemented by \texttt{pyfits}).
+    \begin{itemize}
+    \item Enforced by a Python class hierarchy.
+    \end{itemize}
+  \item Content values required by convention (eg, canonical names).
+    \begin{itemize}
+    \item Enforced by specialized sub-classing and \texttt{validate()}
+      methods implementations provided by all schema classes.
+    \end{itemize}
+  \item Test result content.
+    \begin{itemize}
+    \item Enforced by a mixture of the above.
+    \item Of course, validity of result itself must be confirmed by
+      experts.
+    \end{itemize}
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Current Status of Implementation}
+
+  Basic schema classes written, JimF's example has been the only
+  driving case so far (see next).
+
+  \vspace{2mm}
+
+  Some items still to do on the short term:
+
+  \begin{itemize}
+  \item Implement versioning to allow schema evolution.
+  \item Produce FITS files that are compliant by construction.
+  \item Implement reading FITS files for validation.
+  \item Emit SQL for table creation.  Ties in to schema evolution.
+  \end{itemize}
+
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{The LSST CCD Acceptance Testing Results package: \texttt{lcatr}}
+  \begin{description}
+  \item[\texttt{lcatr.schema}] base schema classes that shadow those from \texttt{pyfits}.
+  \item[\texttt{lcatr.cards}] \texttt{schema.Card} sub-classes
+    implementing common, reusable cards.
+    \begin{itemize}
+    \item similar modules providing reusable sub-classes of other
+      schema elements: HDUs, headers, tables, etc.
+    \end{itemize}
+  \item[\texttt{lcatr.<test>}] the schema for each test is built in its own module.
+    \begin{itemize}
+    \item example shown next using JimF's gain/noise/cold spots work
+    \end{itemize}
+  \end{description}
+  For now, code is maintained at:
+  \begin{center}
+    \url{https://github.com/brettviren/lcatr}    
+  \end{center}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Jim's G/N/C Example in the Schema}
+
+  Construct an unfilled schema (only convention-required content added).
+
+  \begin{lstlisting}[language=Python]
+gnc_schema = schema.Result(
+  PrimaryHDU('GainNoiseCold','theuser'), 
+  [
+    FileRefHDU(),
+    GainHDU(),
+    NoiseHDU(),
+    ColdSpotHDU(),
+  ]
+)
+  \end{lstlisting}
+
+  With this instance will be able to:
+  \begin{itemize}
+  \item produce a compliant-by-construction FITS file
+  \item read in and validate FITS file
+  \item emit SQL table creation statements
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Closer look at the PrimaryHDU}
+
+  Provides convenience settings for some convention-required quantities \\
+  (here, station and user names).
+  \begin{lstlisting}[language=Python]
+class PrimaryHDU(schema.HDU):
+  def __init__(self, station_name, user_name):
+    ph = headers.PrimaryHeader(station_name, user_name)
+    super(PrimaryHDU, self).__init__(ph)
+  \end{lstlisting}
+
+  Relies on specialized \texttt{PrimaryHeader} class.  Delegate basic
+  FITS level management to the base \texttt{HDU} parent class.
+
+  \begin{lstlisting}[langauge=Python]
+class HDU(Base):
+  def __init__(self, header, payload = None):
+    ...      
+  \end{lstlisting}
+
+  Payload is either a \texttt{Data} or a \texttt{Table} class and is
+  to be filled either directly or by reading in from existing FITS
+  file.
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{Questions on this concept}
+  \begin{itemize}
+  \item Do we need to separate the Metadata and Result FITS files?
+    \begin{itemize}
+    \item Can/should the Metadata be put into the Result FITS files?
+      \begin{itemize}
+      \item Better granularity in referencing.
+      \item Fewer schema to specify and parse.
+      \item Less files to manage.
+      \end{itemize}
+    \end{itemize}
+  \item How many test stations/analyzers work in Python?  
+    \begin{itemize}
+    \item We will need intermediate scripts to generate compliant
+      Results FITS files from the others.
+    \end{itemize}
+  \item How likely will it be that the schema needs to evolve over
+    time?
+    \begin{itemize}
+    \item If we can guarantee all tests produce the same type of data,
+      life is easier.
+    \end{itemize}
+  \item What else?
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Input Needed}
+  \begin{itemize}
+  \item Any criticism on this high-level design so far.
+  \item A detailed description of the information expected from each
+    test station and analyzer.
+    \begin{itemize}
+    \item To the level of types and quantity of all data.
+    \item Developing each result's schema will require iteration.
+    \item I will handle producing a unified document covering the
+      information produced from all tests based on what I get.
+    \end{itemize}
+  \item Work with each test operator/analyzer to help them adopt this
+    schema for their results.
+    \begin{itemize}
+    \item I will help integrate the \texttt{lcatr} package into your
+      Python-based tests and/or will help write any needed
+      generator/converter scripts for tests that do not use Python.
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Some Open Issues That Need Thought}
+  \begin{itemize}
+  \item Must handle test station calibration data.
+    \begin{itemize}
+    \item Maybe handle in the same way as result data.
+    \end{itemize}
+  \item Must handle environmental (netbotz) information.
+    \begin{itemize}
+    \item Need system of data collection and DB upload.
+    \item Assure proper subsequent lookup on timestamp.
+      \begin{itemize}
+      \item Is NTP running on all test stations and ``netbotz''?
+      \item What ongoing assurance that clocks stay synced?
+      \end{itemize}
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\end{document}
+
