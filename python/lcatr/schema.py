@@ -56,18 +56,21 @@ class Result(Base):
     def __str__(self):
         ret = ['Result: %d HDUS:'%len(self.hdu)] + [str(hdu) for hdu in self.hdu]
         return '\n'.join(ret)
+
+    def fits(self):
+        return pyfits.HDUList([hdu.pyfits() for hdu in self.hdu])
+
     pass
 
 class HDU(Base):
-    def __init__(self, header, payload = None):
+    def __init__(self, header, payload):
         self.header = header
-        if payload is None: payload = list()
-        self.payload = payload
+        self.payload = payload or list()
         return
 
     def __str__(self):
         ret = ['[0x%x] HDU (%s): ' % (id(self), self.name())]
-        ret += [str(self.header)]
+        ret.append(str(self.header))
         ret += [str(p) for p in self.payload]
         return '\n'.join(ret)
 
@@ -79,8 +82,39 @@ class HDU(Base):
         
     def validate(self):
         self.header.validate()
-        if self.payload: self.payload.validate()
+        for p in self.payload:
+            p.validate()
         return
+
+    def fits(self):
+        fits_header = self.header.fits()
+        fits_payload = [p.fits() for p in self.payload]
+        return pyfits.new_table(fits_payload, header = fits_header)
+
+    pass
+
+class TableHDU(HDU):
+    def __init__(self, header, columns = None):
+        self.base = super(TableHDU,self)
+        self.base.__init__(header)
+        if columns is None: columns = list()
+        self.columns = columns
+        return
+
+    def validate(self):
+        self.base.validate()
+        for c in self.columns():
+            c.validate()
+            continue
+        return
+
+    def __str__(self):
+        ret = [str(self.base)]
+        for c in self.columns():
+            ret.append(str(c))
+        return '\n'.join(ret)
+
+    def fits(self):
 
     pass
 
@@ -162,6 +196,8 @@ class TypeObj():
         'int16':'I',
         'int32':'J',
         'int64':'K',
+        'float32':'E',
+        'float64':'D',
         'sha1':'A64',
         'str':'A64',
         'datetime': 'A86',

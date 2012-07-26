@@ -12,9 +12,9 @@ class PrimaryHDU(schema.HDU):
     '''
     The primary HDU.
     '''
-    def __init__(self,station_name):
-        ph = headers.PrimaryHeader(station_name)
-        super(PrimaryHDU,self).__init__(ph)
+    def __init__(self, station_name, user_name):
+        ph = headers.PrimaryHeader(station_name, user_name)
+        super(PrimaryHDU, self).__init__(ph)
         return
     pass
 
@@ -26,7 +26,7 @@ class FileRefHDU(schema.HDU):
     doubles holding a path and either a hashlib.sha1() or a SHA1
     digest string in hex.
     '''
-    def __init__(self, filelist, sha1list = None):
+    def __init__(self, filelist = None, sha1list = None):
         mh = headers.MinimalHeader('FileRefs')
         pht = tables.PathHashTable(filelist, sha1list)
         super(FileRefHDU,self).__init__(mh,[pht])
@@ -34,7 +34,7 @@ class FileRefHDU(schema.HDU):
     pass
 
 if '__main__' == __name__:
-    phdu = PrimaryHDU('ATestResult')
+    phdu = PrimaryHDU('ATestResult','theuser')
     print phdu
 
     frhdu = FileRefHDU([__file__])

@@ -8,9 +8,9 @@ import columns
 from hashlib import sha1
 
 class PathHashTable(Table):
-    def __init__(self,filelist,sha1list = None):
+    def __init__(self,filelist = None, sha1list = None):
 
-        if not sha1list:
+        if filelist and not sha1list:
             sha1list = [sha1(open(f).read()) for f in filelist]
             pass
         fpc = columns.FilePathColumn(filelist)
@@ -22,5 +22,5 @@ class PathHashTable(Table):
     pass
 
 if __name__ == '__main__':
-    pht = PathHashTable([__file__])
+    pht = PathHashTable()
     print pht

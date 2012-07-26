@@ -45,6 +45,15 @@ class CommitHashCard(Card):
         return
     pass
 
+class UsernameCard(Card):
+    def __init__(self, username=None):
+        base = super(UsernameCard,self)
+        base.__init__('USERNAME', 'str', 'User name',
+                      'The user name of the person operating the test station', 
+                      username)
+        return
+    pass
+
 if __name__ == '__main__':
     from hashlib import sha1
     chc = CommitHashCard()
