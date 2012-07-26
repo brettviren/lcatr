@@ -10,27 +10,34 @@ This wrapping adds the following methods to each HDU and HDUList classes
 
 from pyfits import *
 
+def validate_header_basics(header):
+    for name in ['EXTNAME','EXTVER']: 
+        header[name]            # just a reference to trigger an error
+    return
+
 def PrimaryHDU_validate(self):
     '''
     Validate a Primary HDU.
     '''
     self.verify()
-    for name in ['EXTNAME','EXTVER']: self.header[name]
+    validate_header_basics(self.header)
     return
 PrimaryHDU.validate = PrimaryHDU_validate
-
 
 def TableHDU_validate(self):
     '''
     Validate a TableHDU
     '''
     self.verify()
-    for name in ['EXTNAME','EXTVER']: self.header[name]
+    validate_header_basics(self.header)
     if not len(self.columns):
-        raise ValueError,'TableHUD "%s" with no columns'%self.name
+        raise ValueError,'TableHDU "%s": no columns' % self.name
+
+    if not all([c.array for c in self.columns]):
+        raise ValueError, 'TableHDU "%s": not all columns have arrays' % self.name
+
     return
 TableHDU.validate = TableHDU_validate
-
 
 def HDUList_validate(self):
     '''
@@ -43,7 +50,7 @@ def HDUList_validate(self):
 HDUList.validate = HDUList_validate
 
 def test_PrimaryHDU():
-    p = pyfits.PrimaryHDU()
+    p = PrimaryHDU()
     try:
         p.validate()
     except KeyError,msg:

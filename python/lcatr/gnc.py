@@ -35,7 +35,7 @@ class GncGainsHDU(schema.TableHDU):
         return
     pass
 
-class GncNoiseHDU(schema.TableHDU):
+class GncNoisesHDU(schema.TableHDU):
     def __init__(self, ovsc_noise = None, sdev_noise = None, version = 0):
         super(GncNoisesHDU,self).__init__()
         self.update_ext_name('Noises')
@@ -66,6 +66,7 @@ class GncResult(schema.HDUList):
                 GncPrimaryHDU(),
                 GncInputFilesHDU(),
                 GncGainsHDU(),
+                GncNoisesHDU(),
                 GncColdSpotsHDU(),
                 ])
         return
@@ -73,14 +74,33 @@ class GncResult(schema.HDUList):
         
 
 
-if __name__ == '__main__':
-    gnc = GncResult()
+def test_and_dump(gnc):
     print 'Validating empty GNC:'
-    gnc.validate()
+    #gnc.validate()
     gnc.info()
     for hdu in gnc:
         print hdu.header
+        try:
+            cols = hdu.columns
+        except AttributeError:
+            continue
+        print cols
+        for c in cols:
+            print c.array
         print
         continue
+    return
 
+def test_empty():
+    gnc = GncResult()
+    test_and_dump(gnc)
 
+def test_update():
+    gnc = GncResult()
+    gnc['Gains'].columns[0].array = [2.5122094, 2.8183959, 2.5010307, 2.7617979, 2.5760174, 2.7574365, 2.492455, 2.5485373, 2.7024412, 2.6239278, 2.6323957, 2.888442, 2.7222559, 2.7458601, 2.7033682, 2.7953243]
+    gnc['Gains'].columns[1].array = [2.6737275123596191, 2.7658350467681885, 2.6715354919433594, 2.89190673828125, 2.6117188930511475, 2.7842977046966553, 2.6492691040039062, 2.6967630386352539, 2.8955318927764893, 2.8027498722076416, 2.8578372001647949, 3.0660858154296875, 2.9354989528656006, 2.934161901473999, 2.9992959499359131, 2.8692851066589355]
+    test_and_dump(gnc)
+
+if __name__ == '__main__':
+    # test_empty()
+    test_update()
