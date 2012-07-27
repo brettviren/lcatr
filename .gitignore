@@ -30,3 +30,13 @@ pip-log.txt
 *.fits
 *.pdf
 *.tex
+*.eps
+*.png
+*.toc
+*.vrb
+*.aux
+*.log
+*.nav
+*.out
+*.snm
+*.fdb_latexmk
