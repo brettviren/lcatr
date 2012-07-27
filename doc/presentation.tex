@@ -64,24 +64,32 @@
   \frametitle{High Level Data Flow}
   \includegraphics[width=\textwidth]{dataflow}
   \begin{enumerate}
-  \item Test station produces result files.
-  \item Files are stored to location on disk.
-  \item Validated and uploaded to database.
+  \item Test station / analyzer produces result files.
+  \item All result files are stored ``permanently'' to a well defined disk location.
+  \item Specially formatted result summary files are validated, parsed
+    and their contents are uploaded to the database.
   \end{enumerate}
 
-  Intermediate files allow loose coupling between varied test station
-  platforms and database.
+  \footnotesize
+  By using intermediate files in a common, popular format we can make
+  a loose coupling between the test stations and analyzers and the
+  database.  This will make supporting the varied test platforms and
+  environments simpler.
 \end{frame}
 
-\begin{frame}
+\begin{frame}[fragile]
   \frametitle{Job Harness - Version Control}
   \begin{columns}
     \begin{column}{0.5\paperwidth}
+      Assure knowledge of what software was run to produce any given
+      result.
       \begin{itemize}
-      \item Tests run in a common job harness (Linux and Windows).
-      \item Operator enters external parameters defining a run.
-      \item Station software from a specific commit checked out.
+      \item Tests run by a common job harness (Linux and Windows).
+      \item Operator enters external parameters defining a run which
+        are captured in the output.
+      \item Station software from a specific (GIT) commit is checked out.
       \item Test jobs run producing results.
+      \item Any post-processing to produce required file format.
       \end{itemize}
     \end{column}
     \begin{column}{0.5\paperwidth}
@@ -89,25 +97,29 @@
     \end{column}
   \end{columns}
 
+  \vspace{2mm}
+
   $\rightarrow$Currently at the conceptual level.
 \end{frame}
 
 \begin{frame}
   \frametitle{Station Results}
 
-  A station produces result files in three categories:
+  A station / analyzer produces result files in three categories:
 
   \begin{columns}
     \begin{column}{0.5\paperwidth}
+      \footnotesize
       \begin{description}
       \item[Metadata FITS] Describes test software and enumerates results
-        files and any auxiliary files.
+        files and any auxiliary files.  (well defined schema)
       \item[Result FITS] Result summary files to be parsed and uploaded
-        into the DB.
-      \item[Auxiliary] Any additional files or arbitrary type to archive.
+        into the DB. (well defined schema)
+      \item[Auxiliary] Any additional files to archive. (arbitrary
+        formats)
       \end{description}
     \end{column}
-    \begin{column}{0.45\paperwidth}
+    \begin{column}{0.4\paperwidth}
       \includegraphics[width=\textwidth]{files}
     \end{column}
   \end{columns}
@@ -119,7 +131,7 @@
   \frametitle{Metadata FITS File} 
 
   Collects information about all result files.  Here a ``test'' means
-  a run on a test station or an offline analysis.  4 HDUs:
+  a run on a test station or an offline analysis.  Contains 4 HDUs:
 
   \begin{enumerate}
   \item Primary HDU, header only.
@@ -134,7 +146,7 @@
   \item List of FITS files to be parsed by LIMS (see next).  Stored as
     a table of filenames and content SHA1 digest hashes.
   \item List of all auxiliary files to be linked into the LIMS
-    database.  Lists stored as HDU 3.
+    database.  Lists stored in same form as \#3.
   \end{enumerate}
 
 \end{frame}
@@ -142,25 +154,29 @@
 
 \begin{frame}
   \frametitle{Result FITS File}
-  Collects all result data that will be parsed into LIMS.
+  Collects all result data that will be parsed into LIMS's DB.
 
-  Well defined schema:
+  \vspace{2mm}
+
+  Follows a well defined schema:
   \begin{enumerate}
   \item Common PrimaryHDU for all tests.
     \begin{description}
-    \item[\texttt{TESTNAME}] a canonical name for the test.
-    \item[\texttt{EXTNAME}] HDU schema name
-    \item[\texttt{SCHEMAVER}] schema version
+    \item[\texttt{EXTNAME}] Canonical name for the test as a whole.
+    \item[\texttt{SCHEMAVER}] this HDU's schema version
     \end{description}
   \item Test-specific secondary HDUs with some common cards:
     \begin{description}
-    \item[\texttt{EXTNAME}] name of schema this HDU follows
-    \item[\texttt{SCHEMAVER}] version of schema this HDU follows
+    \item[\texttt{EXTNAME}] identify the schema that this HDU follows
+    \item[\texttt{SCHEMAVER}] this HDU's schema version
     \end{description}
   \end{enumerate}
 
-  Many secondary HDUs will be identical and shared between different
-  result FITS schema.
+  \footnotesize
+
+  Many HDUs for the different types of results will share identical schema elements.
+
+  \vspace{2mm}
 
   A table/data-only HDU still must provide a standard, minimal set of
   cards in the header.
