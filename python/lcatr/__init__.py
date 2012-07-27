@@ -3,3 +3,5 @@
 lcat = LSST CCD Acceptance Testing
 '''
 
+import schema
+import gnc

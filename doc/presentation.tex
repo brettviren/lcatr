@@ -42,8 +42,6 @@
   Physics Department
 
   \includegraphics[height=1.5cm]{bnl-logo}
-
-  \includegraphics[height=1.5cm]{dyb_logo}
 }
 
 \date{\today}
@@ -59,6 +57,21 @@
 \begin{document}
 
 \maketitle
+
+\begin{frame}
+\frametitle{Outline}
+\tableofcontents
+\end{frame}
+
+\begin{frame}
+  \LARGE
+  \begin{center}
+    Caveat: a work in progress \\
+    (but some progress in work).
+  \end{center}
+\end{frame}
+
+\section{Overview}
 
 \begin{frame}[fragile]
   \frametitle{High Level Data Flow}
@@ -76,6 +89,8 @@
   database.  This will make supporting the varied test platforms and
   environments simpler.
 \end{frame}
+
+\section{Job Harness}
 
 \begin{frame}[fragile]
   \frametitle{Job Harness - Version Control}
@@ -101,6 +116,8 @@
 
   $\rightarrow$Currently at the conceptual level.
 \end{frame}
+
+\section{Test Result Files}
 
 \begin{frame}
   \frametitle{Station Results}
@@ -195,7 +212,16 @@
     for each noise measurement type.
   \item[\texttt{ColdSpot}] Table HDU holding four columns of ints,
     amp\#, pixel count, spot X and spot Y.
+  \item[\texttt{LinRange}] Min/max where each amp is within linear
+    specs (to be added)
+  \item[\texttt{FullWell}] Point at which each amp ``blows up''. (to
+    be added)
   \end{description}
+
+  \vspace{5mm}
+
+  \tiny
+  (last two just added yesterday)
 
 \end{frame}
 
@@ -205,15 +231,20 @@
 \begin{frame}
   \frametitle{Schema Definition in Python}
 
-  Steps to defining and validating a custom FITS schema
+  Steps to defining and validating a FITS schema for our results.
+
+  \vspace{5mm}
+
   \begin{enumerate}
   \item Adopt \texttt{pyfits} classes to get valid FITS format by-construction.
   \item Enforce our specific schema by adding a \texttt{validate()} method:
     \begin{itemize}
-    \item existing \texttt{pyfits.*HDU} classes (bolt-on) for common validation
-    \item subclass \texttt{pyfits.*HDU} classes for test-specific validation
+    \item existing \texttt{pyfits.*HDU} classes (bolt-on) for common
+      validation code.
+    \item subclass \texttt{pyfits.*HDU} classes for test-specific
+      validation code.
     \end{itemize}
-  \item Implement a Python module for each test stations results that
+  \item Implement a Python module for each test station's results that
     hard-codes its specific schema.
   \end{enumerate}
 
@@ -222,8 +253,16 @@
 \begin{frame}
   \frametitle{Current Status of Implementation}
 
-  Some basic validations written, JimF's example has been the only driving
-  case so far (see below).
+  Now:
+  \begin{itemize}
+  \item Some basic validation code exists.
+  \item Focused on JimF's example data.
+    \begin{itemize}
+    \item Schema classes written
+    \item Simple validation
+    \item Read/write FITS file
+    \end{itemize}
+  \end{itemize}
 
   \vspace{2mm}
 
@@ -353,18 +392,11 @@ TableHDU.validate = TableHDU_validate  # bolt-on
   \end{lstlisting}
 \end{frame}
 
+\section{Questions and Open Issues}
+
 \begin{frame}
   \frametitle{Questions on this concept}
   \begin{itemize}
-  \item Do we need to separate the Metadata and Result FITS files?
-    \begin{itemize}
-    \item Can/should the Metadata be put into the Result FITS files?
-      \begin{itemize}
-      \item Better granularity in referencing.
-      \item Fewer schema to specify and parse.
-      \item Less files to manage.
-      \end{itemize}
-    \end{itemize}
   \item How many test stations/analyzers work in Python?  
     \begin{itemize}
     \item We will need intermediate scripts to generate compliant
@@ -399,25 +431,39 @@ TableHDU.validate = TableHDU_validate  # bolt-on
       Python-based tests and/or will help write any needed
       generator/converter scripts for tests that do not use Python.
     \end{itemize}
+  \item We need a stable, reasonably shallow and well defined disk
+    area common to (at least) test stations and database ingest
+    client.
   \end{itemize}
 \end{frame}
 
 \begin{frame}
   \frametitle{Some Open Issues That Need Thought}
+
+  At the not-yet-even-conceptual level (at least in my own head):
+
   \begin{itemize}
-  \item Must handle test station calibration data.
+  \item How to handle test station calibration data.
     \begin{itemize}
-    \item Maybe handle in the same way as result data.
+    \item Need detailed list of what this data is.
+    \item Maybe we can handle in a similar way as the main result
+      data.
     \end{itemize}
-  \item Must handle environmental (netbotz) information.
+  \item How to handle environmental (netbotz) information.
     \begin{itemize}
-    \item Need system of data collection and DB upload.
+    \item Netbotz appliances apparently have both push (HTTP POST and
+      FTP) and pull (web service query) delivery
+    \item What type of data must be collected?  What is simply
+      archived and what is put in the DB?
+    \item Archive frequency?
     \item Assure proper subsequent lookup on timestamp.
       \begin{itemize}
       \item Is NTP running on all test stations and ``netbotz''?
       \item What ongoing assurance that clocks stay synced?
       \end{itemize}
     \end{itemize}
+  \item Who writes the collection software and designs the database
+    table schema?  
   \end{itemize}
 \end{frame}
 
