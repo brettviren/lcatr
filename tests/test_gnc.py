@@ -3,24 +3,30 @@
 Test the GNC schema
 '''
 
+import os
 import lcatr
 from hashlib import sha1
+import numpy as np
 
 import test_gnc_data as tgd
 
 
 def dump(gnc):
+    print '''
+Dumping GNC
+===========
+'''
+
     gnc.info()
     for hdu in gnc:
-        print hdu.header
-        try:
-            cols = hdu.columns
-        except AttributeError:
-            continue
-        print cols
-        for c in cols:
-            print c.array
+        msg = 'HDU: "%s"' % hdu.name
         print
+        print msg
+        print '-'*len(msg)
+        print 'Header:'
+        print hdu.header
+        print 'Data:'
+        print hdu.data
         continue
     return
 
@@ -34,26 +40,20 @@ def test_empty():
 def test_update():
     global gnc
     
-    files = gnc['FileRefs'].columns
-    files[0].array = tgd.analyzed_files
-    files[1].array = [sha1().hexdigest() for x in tgd.analyzed_files]
-    # fake the sha1 in this test since we don't have the actual result
-    # files nor their sha1's around
-    print gnc['FileRefs'].header
-    print gnc['FileRefs'].columns
-    #gnc['FileRefs'].update()
-    for c in gnc['FileRefs'].columns:
-        print c.array
-
-    gains = gnc['Gains'].columns
-    gains[0].array = tgd.linear_fit_gains
-    gains[1].array = tgd.median_gains
-    gnc['Gains'].update()
+    fileRefs = gnc['FileRefs']
+    fileRefs.set_column_array('FileName',tgd.analyzed_files)
+    fileRefs.set_column_array('SHA1hash',[sha1().hexdigest() for x in tgd.analyzed_files])
+    fileRefs.validate()
     
-    noises = gnc['Noises'].columns
-    noises[0].array = tgd.overscan_noise
-    noises[1].array = tgd.stddev_noise
-    gnc['Noises'].update()
+    gains = gnc['Gains']
+    gains.set_column_array('LinGains', tgd.linear_fit_gains)
+    gains.set_column_array('MedGains', tgd.median_gains)
+    gains.validate()
+    
+    noises = gnc['Noises']
+    noises.set_column_array('OvScNois', tgd.overscan_noise)
+    noises.set_column_array('SdevNois', tgd.stddev_noise)
+    noises.validate()
 
     ampnum = []
     pixcount = []
@@ -69,14 +69,14 @@ def test_update():
             spoty.append(y)
             continue
         continue
-    spots = gnc['ColdSpot'].columns
-    spots[0].array = ampnum
-    spots[1].array = pixcount
-    spots[2].array = spotx
-    spots[3].array = spoty
-    gnc['ColdSpot'].update()
+    spots = gnc['ColdSpot']
+    spots.set_column_array('AmpNum', ampnum)
+    spots.set_column_array('PixCount', pixcount)
+    spots.set_column_array('SpotX', spotx)
+    spots.set_column_array('SpotY', spoty)
+    spots.validate()
 
-    #dump(gnc)
+    return
 
 def test_validate():
     global gnc
@@ -87,11 +87,18 @@ def test_write():
     Write to file 
     '''
     global gnc
-    gnc.writeto("test_gnc.fits")
+    filename = "test_gnc.fits"
+    if os.path.exists(filename):
+        #print 'File "%s" exists, removing' % filename
+        os.remove(filename)
+        pass
+    gnc.writeto(filename)
 
 def test_read_and_validate():
+    dump(gnc)
     gnc2 = lcatr.schema.open("test_gnc.fits")
     gnc2.validate()
+    dump(gnc2)
 
 if __name__ == '__main__':
     test_empty()

@@ -18,8 +18,8 @@ class GncInputFilesHDU(schema.TableHDU):
         super(GncInputFilesHDU,self).__init__()
         self.update_ext_name('FileRefs')
         self.update_ext_version(version)
-        fc = schema.Column(name='FileName', format='A64', array=filelist)
-        hc = schema.Column(name='SHA1Hash', format='A64', array=sha1list)
+        fc = schema.Column(name='FileName', format='A64', array=filelist, start=1)
+        hc = schema.Column(name='SHA1Hash', format='A64', array=sha1list, start=2)
         self.columns = schema.ColDefs([fc,hc])
         return
     pass
@@ -29,8 +29,8 @@ class GncGainsHDU(schema.TableHDU):
         super(GncGainsHDU,self).__init__()
         self.update_ext_name('Gains')
         self.update_ext_version(version)
-        lc = schema.Column(name='LinGains', format='E', array=lin_gains)
-        mc = schema.Column(name='MedGains', format='E', array=med_gains)
+        lc = schema.Column(name='LinGains', format='E', array=lin_gains, start=1)
+        mc = schema.Column(name='MedGains', format='E', array=med_gains, start=2)
         self.columns = schema.ColDefs([lc,mc])
         return
     pass
@@ -40,8 +40,8 @@ class GncNoisesHDU(schema.TableHDU):
         super(GncNoisesHDU,self).__init__()
         self.update_ext_name('Noises')
         self.update_ext_version(version)
-        lc = schema.Column(name='OvScNois', format='E', array=ovsc_noise)
-        mc = schema.Column(name='SdevNois', format='E', array=sdev_noise)
+        lc = schema.Column(name='OvScNois', format='E', array=ovsc_noise, start=1)
+        mc = schema.Column(name='SdevNois', format='E', array=sdev_noise, start=2)
         self.columns = schema.ColDefs([lc,mc])
         return
     pass
@@ -52,8 +52,8 @@ class GncColdSpotsHDU(schema.TableHDU):
         self.update_ext_name('ColdSpot')
         self.update_ext_version(kwds.get('version') or 0)
         cols = []
-        for what in ['AmpNum','PixCount','SpotX','SpotY']:
-            c = schema.Column(name=what, format='I', array = kwds.get(what.lower()))
+        for count, what in enumerate(['AmpNum','PixCount','SpotX','SpotY']):
+            c = schema.Column(name=what, format='I', array = kwds.get(what.lower()), start=count+1)
             cols.append(c)
             continue
         self.columns = schema.ColDefs(cols)
