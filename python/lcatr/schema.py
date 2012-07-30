@@ -10,39 +10,71 @@ This wrapping adds the following methods to each HDU and HDUList classes
 
 from pyfits import *
 import numpy
+import util
 
-def validate_header_basics(header):
-    for name in ['EXTNAME','EXTVER']: 
-        header[name]            # just a reference to trigger an error
-    return
+#
+# Validate
+#
 
-def PrimaryHDU_validate(self):
+def HDU_validate(self):
     '''
-    Validate a Primary HDU.
+    Basic validation of an HDU
     '''
-    self.verify()
-    validate_header_basics(self.header)
+    try:
+        self.verify("exception")
+    except VerifyError,msg:
+        msg = 'HDU "%s/%s": verify failed: %s' % (self.canonical_name, self.name, msg)
+        raise ValueError,msg
+
+    headers = ['EXTNAME','EXTVER'] + self.required_cards
+    for name, comment in self.required_cards:
+        if not self.header.get(name):
+            raise ValueError, '%s: required card: "%s" not set' % (self.canonical_name,name)
+        continue
     return
-PrimaryHDU.validate = PrimaryHDU_validate
+PrimaryHDU.validate = HDU_validate
 
 def TableHDU_validate(self):
     '''
     Validate a TableHDU
     '''
     #print '\nVALIDATING TableHDU "%s"\n-------------------' % self.name
-    try:
-        self.verify("exception")
-    except VerifyError,msg:
-        msg = 'TableHDU: "%s":' % self.name + str(msg)
-        raise ValueError,msg
-    validate_header_basics(self.header)
-
+    self.base_validate()
     if not len(self.data):
         raise ValueError,'TableHDU "%s": no table data' % self.name
-
     return
-TableHDU.validate = TableHDU_validate
-BinTableHDU.validate = TableHDU_validate
+TableHDU.base_validate    = HDU_validate
+TableHDU.validate         = TableHDU_validate
+BinTableHDU.base_validate = HDU_validate
+BinTableHDU.validate      = TableHDU_validate
+
+
+#
+# Intialize
+#
+ 
+def HDU_initialize_schema(self, **kwds):
+    '''
+    Intialize a schema with its required cards and, optionally, set some of them.
+    '''
+    self.update_ext_name(self.canonical_name)
+    self.update_ext_version(kwds.get('version',0))
+    for name, comment in self.required_cards:
+        if not self.header.has_key(name):
+            self.header.update(name, '', comment)
+        key = util.keywordify(name)
+        val = kwds.get(key)
+        if val is None: continue
+        self.header[key] = val
+        continue
+    return
+PrimaryHDU.initialize_schema  = HDU_initialize_schema
+TableHDU.initialize_schema    = HDU_initialize_schema
+BinTableHDU.initialize_schema = HDU_initialize_schema
+
+#
+# Data accessors
+#
 
 def TableHDU_get_column(self, column):
     '''

@@ -1,0 +1,94 @@
+List of Data Products from EO single CCD tests 
+
+* Meta
+
+ - Initially from Jim Frank on Tue, 24 Jul 2012 14:51:35 +0000
+
+* RTS2
+
+** Dark Frames
+
+ - Script :: =dark=
+
+ - Method :: take n dark frames at m expose times.
+
+ - Main analysis/DAQ problems ::
+
+   - Cosmic rays
+   - Light leaks
+
+ - Results ::	
+
+   - Average dark-current (ADU/sec) per amp
+   - Average dark-current (ADU/sec) per amp in first k rows near each amplifier
+   - Noise (ADU)
+   - Number and List of noisy locations
+   - Number and List of column defects
+   - Dark-current fits file, perhaps including masked regions.
+
+** Equal Exposure
+
+ - Script :: =ptc=
+
+ - Method :: take 2 equal exposure files from 0sec to n sec.
+
+ - Main analysis DAQ problems ::
+
+   - Need optimization of expose times to get to full well 
+   - White light, or ~830nm to get lots of statistics
+   - Gain depends upon exposure
+   - Uniform illumination
+
+ - Results ::
+
+   - Noise (two methods) ADU per amplifier
+   - Gain (two methods) e/ADU per amplifier
+   - Dark (cold) pixels number and location
+   - Full well
+   - Illumination correction parameters (quadratic fit?)
+   - Edge response maps
+   - PRNU per amp (entire imaging area, after illumination correction)
+   - PRNU per amp (after illumination, edge correction)
+   - Deviation from linear response (fractional deviation of ADU/sec) from ~100e to ~90% of full well
+   - CTE at three ADU (or gain) values based upon overscan
+   - Flat field fits file, perhaps including masks
+
+** Quantum Efficiency
+
+ - Script :: =QE=
+ - Method :: take exposures from 300nm to 1100nm +dark exposure
+ - Main analysis/DAQ problems ::
+   -	Need calibration of PD
+   -	Need optimization of wavelength selection, band width, and exposure times for adequate statistics 
+Results:
+   -	QE at each wavelength (after correction for gains, illumination)
+   -	PNRU at each wavelength (after illum, edge response corrections)
+   -	Summary image files, showing structure patterns
+
+** Fe55
+
+ - Script :: =FE55=
+ - Method :: take bias and Fe55 exposures
+ - Main analysis/DAQ problems ::
+ - Results ::
+   -	Gain of each amp
+   -	CTE
+   -	Noise in image region
+
+** Jig
+
+ - Script :: =jig=
+ - Method :: take pocket-puming script data	
+ - Main analysis/DAQ problems::
+   -	Decide optimum
+ - Results ::
+   -	List of traps, location and strength
+
+** Cooling
+
+ - Script :: =cool=
+ - Method :: take successive data dark, 500nm, 1000nm as device cools to operating temp, and then warms up after tests	
+ - Main analysis/DAQ problems:
+   -	Decide optimum
+ - Results ::
+   -	List of traps, location and strength

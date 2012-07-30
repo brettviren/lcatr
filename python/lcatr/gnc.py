@@ -3,7 +3,7 @@
 Results for the Gain/Noise/ColdSpot (GNC) test.
 '''
 
-import schema as schema
+import schema
 
 class GncPrimaryHDU(schema.PrimaryHDU):
     def __init__(self, version = 0):
