@@ -23,6 +23,13 @@
 #+LINK_HOME:
 #+XSLT:
 
+## http://orgmode.org/manual/Macro-replacement.html
+## handle images:
+## Usage: {{{limg(label,filebase,caption)}}}
+
+#+MACRO: himg #+HTML: <a name="$1"><center><img width="100%" src="$2.svg" alt="$3"/> $3</center></a>
+#+MACRO: limg #+LATEX: \begin{figure}\label{$1}\includegraphics[width=\textwidth]{$2.pdf}\caption{$3}\end{figure}
+
 ## http://lists.netisland.net/archives/plug/plug-2011-11/msg00088.html
 #+LaTeX_HEADER:\usepackage[margin=0.75in]{geometry}
 
@@ -37,53 +44,63 @@ presented.  (FIXME: this is still a draft in progress.)
 
 * Overview
 
-The LSST CCD acceptance tests consist of several stations each
-evaluating some aspect of the CCDs.  These tests run on a
-heterogeneous set of platforms.  Results of these test are considered
-to be separated into two forms.  Part is a result summary suitable for
-storing in a database for later searching and report building.  The
-rest is considered ancillary and to be used for any post-testing
-detailed studies.  It is the summary results that this document
-addresses.
+The LSST CCD acceptance tests consist of several stations and analyses
+(collectively "tests") each evaluating some aspect of the CCD-level
+hardware.  These tests run on a heterogeneous set of platforms.
+Results of these tests are files on disk which can be separated into
+three forms.  First is a single /metadata/ file for each test result
+that describes the test and the resulting files of the other two
+types.  The second type includes one or more /results/ files from each
+test result which summarizes all the information, no more and no less,
+that should be loaded into the database.  The third type includes zero
+or more auxiliary files that will be referenced by the /metadata/ and
+/results/ files and archived along with them but not otherwise
+processed.
 
-To handle transferring summary information from a variety of sources
-into the database requires that the data be well formed and satisfy
-all the technical requirements needed for database access.  Direct
-database access by each test station would require many custom
-solutions.  Instead, an exchange file is produced in a format that all
+The /metadata/ and /results/ files follow a well defined format (FITS)
+and a well defined internal organization (ie, schema).  This document
+gives a general description of this schema and some Python code that
+assists in producing and validating compliant files.  The definitive
+description of the schema is produced by this code.
+
+A choice was made in requiring these intermediate files.
+Alternatively, software could be developed for each test that uploads
+the results directly to the database.  This approach would require
+each test author to have familiarity with database access, or it would
+require a database interface to be written that supports each possible
+test platform.
+
+Instead, intermediate exchange files are produced in a format that all
 stations should be able to write.  In order to reduce complexity in
 the database ingest application, these files are required to follow a
 well defined format and schema.  It must be possible to validate these
 interchange files against their schema before ingesting to avoid
 polluting the database with wrong or inconsistent values.
 
-Besides the summary results themselves, this interchange file should
-encapsulate any important meta-data about the test, such as the
-version of the test software, as well as provide a means to reference
-the ancillary results.
-
 The FITS file format is used for these interchange files.  FITS is a
-natural choice in that it is general purpose but with specific
-features needed by the tests (in particular storage of bitmapped
-images).  It is also commonly used in astrophysics applications and
-well supported on the variety of test station platforms.
+natural choice in that it is somewhat general purpose but also
+provides specific features needed by the tests (in particular storage
+of bitmapped information).  It is also commonly used in astrophysics
+applications and well supported on the variety of test station
+platforms.
 
-#+caption: Overview of the acceptance testing result data handling.
-#+label: fig:overview
-[[./overview.pdf]]
+{{{limg(fig:overview,dataflow,Overview of the data handling of acceptance testing results.)}}}
+{{{himg(fig-overview,dataflow,Overview of the data handling of acceptance testing results.)}}}
 
-Figure \ref{fig:overview} shows a cartoon of the handling of the
-result data from the test stations.  A station checks out its software
-and records the corresponding commit identifier (GIT SHA1 digest
-hash).  Runs the test and produces a FITS summary file in the
-interchange format described here and potentially additional ancillary
-files.  The commit identifier, references to teh ancillary files and
-the summary results themselves are written to the FITS summary file.
-When a FITS summary file is available an external process validates is
-and, if it passes, updates the database with the results.  If
-validation fails the overall controlling process (not shown) is
-notified.  Later, reports and additional post-test analysis can be
-performed by making queries to the database.  
+Figure \ref{fig:overview} shows a high-level cartoon of the handling
+of the result data from the test stations.  
+
+FIXME: A station checks out its software and records the corresponding
+commit identifier (GIT SHA1 digest hash).  Runs the test and produces
+a FITS summary file in the interchange format described here and
+potentially additional ancillary files.  The commit identifier,
+references to teh ancillary files and the summary results themselves
+are written to the FITS summary file.  When a FITS summary file is
+available an external process validates is and, if it passes, updates
+the database with the results.  If validation fails the overall
+controlling process (not shown) is notified.  Later, reports and
+additional post-test analysis can be performed by making queries to
+the database.
  
 The rest of this document describes the file schema, that is how these
 FITS interchange files must organize their contents.

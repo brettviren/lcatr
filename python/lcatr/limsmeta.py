@@ -1,40 +1,62 @@
 #!/usr/bin/env python
 '''
-Schema for the LIMS Metadata file
+Schema for the LIMS Metadata file.
 '''
 
-import schema, util
+import base as pyfits
+import common
 
-class LimsMetaPrimaryHDU(schema.PrimaryHDU):
+class LimsMetaPrimaryHDU(pyfits.PrimaryHDU):
     '''
     Primary HDU for LIMS Metadata file.
 
     This HDU holds basic information about the test itself.
 
-    To fill this HDU, each of the required cards should be given as
-    keywords to the class or set after creation.
     '''
 
-    canonical_name = 'LimsMeta'
+    schema_name = 'LimsMeta'
     
+    #: Required cards for LIMS Meta data primary HDU
     required_cards = [
         ('TESTNAME','Canonical name for the test result'),
         ('DATE-OBS','Time stamp of when test is run'),
         ('USERNAME','Name of operator/analyzer performing test'),
         ]
-
-    def __init__(self, **kwds):
-        super(LimsMetaPrimaryHDU,self).__init__()
-        self.initialize_schema(**kwds)
-        return
-
     pass
 
+class SoftwareTableHDU(pyfits.BinTableHDU):
+    '''
+    Table HDU describing software run to produce a test result.
 
+    This holds columns of:
+    
+    - A GIT SHA1 commit hash
+    - A coresponding GIT tag label
+    - ......
+    '''
+    fixme()
+    pass
+
+#: The schema for a LIMS meta data file.
+#: 
+#: This consists of four HDUs.  In addition to the primary there are:
+#: 
+#: 1) ``lcatr.limsmeta.SoftwareTableHDU`` software descripion in the form of a GIT SHA1 commit has, tag and program name
+#: 
+#: 2) ``lcatr.common.FileRefTableHDU``, describing Result FITS files to be parsed into LIMS
+#: 
+#: 3) ``lcatr.common.FileRefTableHDU``, describing any auxiliary files to be linked into LIMS database
+schema = pyfits.HDUList([
+        LimsMetaPrimaryHDU(),
+        SoftwareTableHDU(),
+        common.FileRefTableHDU(),
+        common.FileRefTableHDU(),
+        ])
 
 
 if __name__ == '__main__':
     import datetime, time
+    import util
 
     meta = LimsMetaPrimaryHDU(testname = 'TestLimsMeta')
     meta.header.update('username','theycallmedog')
