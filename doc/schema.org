@@ -30,6 +30,8 @@
 #+MACRO: himg #+HTML: <a name="$1"><center><img width="100%" src="$2.svg" alt="$3"/> $3</center></a>
 #+MACRO: limg #+LATEX: \begin{figure}\label{$1}\includegraphics[width=\textwidth]{$2.pdf}\caption{$3}\end{figure}
 
+#+MACRO: mimg #+HTML: <a name="$1"><center><img width="100%" src="$2.svg" alt="$3"/> $3</center></a>\n#+LATEX: \begin{figure}\label{$1}\includegraphics[width=\textwidth]{$2.pdf}\caption{$3}\end{figure}
+
 ## http://lists.netisland.net/archives/plug/plug-2011-11/msg00088.html
 #+LaTeX_HEADER:\usepackage[margin=0.75in]{geometry}
 
@@ -84,11 +86,14 @@ of bitmapped information).  It is also commonly used in astrophysics
 applications and well supported on the variety of test station
 platforms.
 
-{{{limg(fig:overview,dataflow,Overview of the data handling of acceptance testing results.)}}}
-{{{himg(fig-overview,dataflow,Overview of the data handling of acceptance testing results.)}}}
+{{{mimg(fig-overview,dataflow,Overview of the data handling of acceptance testing results.)}}}
 
-Figure \ref{fig:overview} shows a high-level cartoon of the handling
+Figure \ref{fig-overview} shows a high-level cartoon of the handling
 of the result data from the test stations.  
+
+
+
+
 
 FIXME: A station checks out its software and records the corresponding
 commit identifier (GIT SHA1 digest hash).  Runs the test and produces

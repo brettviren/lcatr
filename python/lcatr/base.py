@@ -1,23 +1,53 @@
 #!/usr/bin/env python
 '''
-This module wraps pyfits classes to support LCATR schema.
+Modify pyfits to support LCATR schema.
+======================================
 
-This wrapping enhances and specializes the HDU pyfits classes.  To do
-this it modifies the pyfits HDU classes and so must always be imported
-first
+This module modifies the ``pyfits`` module and provides a set of base
+HDU classes that supports the LCATR schema.  
 
-  >>> import lcatr.base
+Importing
+---------
+
+The ``lcatr.base`` module (or just ``lcatr`` which imports ``base``)
+must be imported before any ``pyfits`` objects are used:
+
+  >>> import lcatr
   >>> import pyfits
 
-It imports all of pyfits so strictly speaking one does not need to
-import pyfits explicitly as on can reference all pyfits object via the
-base module.  Or one can get familiar looking code via:
+It imports all of ``pyfits`` so strictly speaking one does not need to
+``import pyfits`` explicitly as one can reference all ``pyfits`` object via the
+``base`` module.  Or one can get familiar looking code via:
 
   >>> import lcatr.base as pyfits
 
-To define specific schema, and provide validation code, inherit from
-one of the HDU classes described below and provide their expected
-extensions.
+Defining Schema
+---------------
+
+To define specific schema for an HDU one must:
+
+1) inherit from one of the ``lcatr.base.*HDU`` classes,
+
+2) define any cards and/or columns the schema requires
+
+3) implement any specific validation code.
+
+Beyond what cards a specific schema requires, every HDU must contain
+two standard FITS cards which are used to persist information about
+what schema the HDU follows.  They are:
+
+``EXTNAME``
+    
+    The canonical, case insensitive name of the schema which is taken
+    as the name of the implementing class.  This is set automatically
+    by the base classes.
+
+``EXTVER``
+
+    The version of the schema that the data follows.  This default to
+    0 (zero).  Each change to the schema must include an increment of
+    this number and code that can read older files into the newer
+    schema.
 
 '''
 
@@ -28,44 +58,44 @@ import util
 
 # Some quantities and methods shared by all HDU classes.
 
-#: All HDUs must supply these cards.
+#: All HDUs must supply these cards.  In addition each specific HDU
+#: class may set a class variable ``required_cards`` to a similar list
+#: in order to specify additional cards.
 required_cards = [
-    ('EXTNAME','Name of the HDU and its schema'),
-    ('EXTVER' ,'Version of the HDU schema'),
+    ('EXTNAME','FITS name of the HDU'),
+    ('EXTVER' ,'Version of the HDU'),
     ]
 
 
-class BaseHDU:
+class BaseHDU(object):
     '''
     Base HDU class.
     
-    This base is multiply inherited by the HDU classes that replace
-    the standard ``pyfits`` ones:
+    This is a mixin class that adds LCATR-specific methods to all HDU
+    classes.  It is multiply-inherited along with a ``pyfits`` HDU
+    class in order to replace the ``pyfits`` version.  Only these HDU
+    classes are supported:
 
     * ``PrimaryHDU``
     * ``TableHDU``
     * ``BinTableHDU``
-
-    to provide some additional methods.
     '''
 
-    #: Specific HDU sub classes should set this to the list of required cards in the form:
-    #:   >>> required_cards = [(name, comment), ...]
+    #: Specific HDU sub classes should set this to the list of cards required.  These are cards beyond and listed in the same manner as the standard ones listed above in ``base.required_cards``.
     required_cards = None
-
-    #: Specify the name of the schema that this HDU follows.  
-    schema_name = 'Generic'
 
     def required_card_desc(self):
         '''
-        Return the list of required card descriptions
+        Return the list of required card descriptions built from the
+        common set ``base.required_card`` and the ones specific to the
+        subclasses ``.required_cards`` list.  This is used internally.
         '''
         mycards = self.required_cards or list()
         return required_cards + mycards
 
     def initialize_cards(self, **kwds):
         '''
-        This method should be called by the constructor.
+        This method should be called by the HDU class constructor.
 
         Keyword arguments are interpreted as names of required cards
         (lower cased and with '-' replaced by '_') and are used to
@@ -75,11 +105,18 @@ class BaseHDU:
           >>> import datetime, time
           >>> from lcatr.base import PrimaryHDU
           >>> now = datetime.datetime(*time.gmtime()[:6])
-          >>> hdu = PrimaryHDU(extname='TheSchema',date_obs=now)
-          >>> hdu.header['extver'] = 0 # set schema version after construction
+          >>> hdu = PrimaryHDU(testname='TheTestName', date_obs=now)
+          >>> hdu.header['extver'] = 1 # set schema version after construction
+
+        ``EXTNAME`` is the implementing class name
+        ``EXTVER`` will default to 0
         '''
-        self.update_ext_name(self.schema_name)
-        self.update_ext_version(kwds.get('version',0))
+
+        schema_name = self.__class__.__name__
+        schema_ver = kwds.get('version',0)
+
+        self.update_ext_name(schema_name)
+        self.update_ext_version(schema_ver)
 
         for name, comment in self.required_card_desc():
             if not self.header.has_key(name):
@@ -88,7 +125,8 @@ class BaseHDU:
             key = util.keywordify(name)
             val = kwds.get(key)
             if val is None: continue
-            self.header[key] = val
+            val = util.wash_card_value(val)
+            self.header[name] = val
             continue
         return
 
@@ -104,18 +142,29 @@ class BaseHDU:
         try:
             self.verify("exception")
         except VerifyError,msg:
-            msg = 'HDU "%s/%s": verify failed: %s' % (self.schema_name, self.name, msg)
+            #msg = 'HDU "%s/%s": verify failed: %s' % (self.schema_name, self.name, msg)
+            msg = 'HDU "%s/%s": verify failed: %s' % (self.__class__.__name__, self.name, msg)
             raise ValueError,msg
 
         for name, comment in self.required_card_desc():
             value = self.header.get(name)
             if value is None:
-                raise ValueError, '%s: required card: "%s" not set' % (self.schema_name,name)
+                raise ValueError, '%s: required card: "%s" not set' % \
+                    (self.__class__.__name__,name)
             if value == '':
-                raise ValueError, '%s: required card: "%s" is empty string' % (self.schema_name,name)
-            print 'Header has required card: "%s" (%s)' % (name, comment)
+                raise ValueError, '%s: required card: "%s" is empty string' % \
+                    (self.__class__.__name__,name)
             continue
         return
+
+    def update_self(self, doppel = None):
+        '''
+        If doppel is given, steal its header
+        '''
+        if not doppel: return
+        self.header = doppel.header
+        return
+
     pass
 
 class PrimaryHDU(pyfits.PrimaryHDU, BaseHDU):
@@ -123,25 +172,27 @@ class PrimaryHDU(pyfits.PrimaryHDU, BaseHDU):
     Extension to pyfits.PrimaryHDU.
     
     The intial arguments to the constructor are the same as
-    pyfits.PrimaryHDU.
+    ``pyfits.PrimaryHDU``.
 
-      >>> hdu = PrimaryHDU(extname = 'TheSchemaName')
+      >>> hdu = PrimaryHDU(testname = 'TheTestName')
       >>> hdu.header['extver'] = 0 # the schema version
 
-    see the BaseHDU.initialize_cards method for details.
+    see the ``BaseHDU.initialize_cards`` method for details.
     '''
 
     def __init__(self, data=None, header=None, do_not_scale_image_data=False, uint=False, **kwds):
         super(PrimaryHDU,self).__init__(data,header,do_not_scale_image_data,uint)
         self.initialize_cards(**kwds)
         return
+
     pass
+
 
 class TableBaseHDU(BaseHDU):
     '''
     Base class for all Table HDUs.
 
-Each subclass should define a .required_columns class data member which holds a li
+Each subclass should define a ``.required_columns`` class data member which holds a li
     '''
     
     #: The list of descriptions of required columns in the form of a list of (name,type) doubles:
@@ -152,7 +203,7 @@ Each subclass should define a .required_columns class data member which holds a 
     def initialize_table_base(self,**kwds):
         self.initialize_cards(**kwds)
         self.initialize_columns(**kwds)
-        self.update_data()
+        self.update_self()
         return
 
     def initialize_columns(self, **kwds):
@@ -160,13 +211,13 @@ Each subclass should define a .required_columns class data member which holds a 
         Intialized the required columns.  
 
         This method is called by the constructor and any kwds that
-        match column names (first made lower case and '-' replaced by
-        '_') will have their values treated as a column array.
+        match column names (first made lower case and ``-`` replaced by
+        ``_``) will have their values treated as a column array.
         Otherwise the column will be created empty.
         '''
         if not self.required_columns: return
         cols = []
-        for count,(name,typestr) in enumerate(self.required_columns):
+        for count,(name,typestr,comment) in enumerate(self.required_columns):
             kwname = name.lower().replace('-','_')
             array = kwds.get(kwname,list())
             col = pyfits.Column(name=name, format=typestr, array=array, start=count+1)
@@ -179,9 +230,10 @@ Each subclass should define a .required_columns class data member which holds a 
 
     def validate(self):
         '''
-        Validate a table HDU
+        Validate a table HDU.
+
+        This adds to basic validity checking by requiring the table data to exist.
         '''
-        #print '\nVALIDATING TableHDU "%s"\n-------------------' % self.name
         super(TableBaseHDU,self).validate()
         if not len(self.data):
             raise ValueError,'TableHDU "%s": no table data' % self.name
@@ -205,7 +257,7 @@ Each subclass should define a .required_columns class data member which holds a 
             raise ValueError, 'TableHDU "%s": no column %s at index %s' % (column, index+1)
         return col
 
-    def update_data(self, doppel = None):
+    def update_self(self, doppel = None):
         '''
         Update self.
 
@@ -218,8 +270,8 @@ Each subclass should define a .required_columns class data member which holds a 
         # temporary new table HDU and steal its guts as our own.
         if not doppel:
             doppel = new_table(self.columns, self.header)
-        self.columns = doppel.columns
         self.header = doppel.header
+        self.columns = doppel.columns
         self.data = doppel.data
         return
 
@@ -233,14 +285,14 @@ Each subclass should define a .required_columns class data member which holds a 
         
         ValueError is raised if column is not found.
         
-        This triggers update of the .data member.
+        This triggers an ``update_self()``.
         '''
         col = self.get_column(column)
         if isinstance(array,list):
             array = numpy.array(array)
             pass
         col.array = array
-        self.update_data()
+        self.update_self()
         return
 
     def append_column_array(self, column, entry):
@@ -249,11 +301,11 @@ Each subclass should define a .required_columns class data member which holds a 
         
         The column is specified either by its index (1-based) or name.
         
-        This triggers update of the .data member.
+        This triggers an ``update_self()``.
         '''
         col = self.get_column(column)
         numpy.append(col.array, entry)
-        self.update_data()
+        self.update_self()
         return
 
     pass                        # TableBaseHDU
@@ -264,10 +316,16 @@ Each subclass should define a .required_columns class data member which holds a 
 class TableHDU(pyfits.TableHDU, TableBaseHDU):
     '''
     Extension to pyfits.TableHDU.
+
+    Named arguments are passed to ``pyfits.TableHDU``.  Additional
+    keyword arguments are treated as initial values for either
+    required cards or columns.
+
+    This is an ASCII table and probably you want to use
+    ``BinTableHDU``.  See ``TableBaseHDU`` for more details.
     '''
     def __init__(self, data=None, header=None, name=None, **kwds):
         super(TableHDU,self).__init__(data,header,name)
-        kwds['extname'] = kwds.get('extname',name) # alias name->extname
         self.initialize_table_base(**kwds)
         return
     pass
@@ -275,10 +333,15 @@ class TableHDU(pyfits.TableHDU, TableBaseHDU):
 class BinTableHDU(pyfits.BinTableHDU, TableBaseHDU):
     '''
     Extension to pyfits.BinTableHDU.
+
+    Named arguments are passed to ``pyfits.BinTableHDU``.  Additional
+    keyword arguments are treated as initial values for either
+    required cards or columns.
+
+    See ``TableBaseHDU`` for more details.
     '''
     def __init__(self, data=None, header=None, name=None, **kwds):
         super(BinTableHDU,self).__init__(data,header,name)
-        kwds['extname'] = kwds.get('extname',name) # alias name->extname
         self.initialize_table_base(**kwds)
         return
     pass
@@ -297,7 +360,9 @@ pyfits.BinTableHDU = BinTableHDU
 # This is just a simple bolt-on
 def HDUList_validate(self):
     '''
-    Validate a list of HDUs
+    Validate a list of HDUs.  
+
+    This method is bolted on to ``pyfits.HDUList``.
     '''
     self.verify()
     for hdu in self:
@@ -308,39 +373,48 @@ pyfits.HDUList.validate = HDUList_validate
 
 def hdu_pyfits2lcatr(hdu):
     '''
-    Return an lcatr version of the plain pyfits HDU.
+    Return an ``lcatr`` version of the plain pyfits HDU.
     '''
     import lcatr
     module = type(lcatr)
 
+    schema_name = hdu.header['EXTNAME']
+
     for thing in dir(lcatr):
-        if not isinstance(thing,module): 
-            continue
         mod = lcatr.__dict__[thing]
+        if not isinstance(mod,module): 
+            continue
+
         try:
             schema = mod.schema
         except AttributeError:
             continue
-        if hdu.name != schema.name:
-            continue
+        for klass in schema:
+            if schema_name.lower() != klass.__name__.lower():
+                continue
 
-        # got a hit
-        klass = schema.__class__
-        new = klass()
-        new.update_data(hdi)
-        return new
-    return None                 # go fish
+            # got a hit
+            new = klass()
+            new.update_self(hdu)
+            return new
+        continue
+    raise ValueError, 'No known class for HDU "%s"' % schema_name
 
 
-def open(*args, **kwds):
+pyfitsopen = pyfits.open
+def lcatr_open(*args, **kwds):
     '''
     An LCATR-specific file reader.
 
-    This will return lcatr versions.
+    This will return lcatr versions of the HDU classes.
+
+    After loading this module, this method is available as the
+    familiar ``pyfits.open()``.
     '''
 
-    hl = pyfits.open(*args,**kwds)
+    hl = pyfitsopen(*args,**kwds)
     return pyfits.HDUList([hdu_pyfits2lcatr(hdu) for hdu in hl])
+pyfits.open = lcatr_open
     
 
 # import all of pyfits so users need not include pyfits 

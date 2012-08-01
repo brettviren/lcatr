@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 '''
-Some common, reused HDU classes
+Some common, reusable HDU classes.
 '''
 
 import base as pyfits
@@ -10,19 +10,23 @@ class FileRefTableHDU(pyfits.BinTableHDU):
     '''
     A table HDU containing references to files.
 
-    The references are of the form of a path to a file and a SHA1 hash
-    of its contents.
+    The named keywords are passed up to the parrent class.  All
+    remaining keyword arguments, if any, are used to initialize the
+    columns as described below.
+
     '''
     
+    #: Required columns to described file references.
     required_columns = [
-        ('FileName', 'A64'),
-        ('SHA1Hash', 'A64'),
+        ('FileName', 'A64','The referenced file paths.'), 
+        ('SHA1Hash', 'A64', 'A SHA1 digest of the file contents'),
         ]
 
 
     def generate(self):
         '''
-        Replace file content hashes with new ones
+        Replace file hashes with new ones by running
+        ``hashlib.sha1()`` on the file contents.
         '''
         hashes = []
         for filename,ignore in self.data:

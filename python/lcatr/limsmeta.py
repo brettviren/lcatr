@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 '''
 Schema for the LIMS Metadata file.
+
+This consists of four HDUs as listed in the ``lcatr.limsmeta.schema``
+variable below.
 '''
 
 import base as pyfits
@@ -10,13 +13,14 @@ class LimsMetaPrimaryHDU(pyfits.PrimaryHDU):
     '''
     Primary HDU for LIMS Metadata file.
 
-    This HDU holds basic information about the test itself.
+    This HDU holds meta information about the test itself.
 
+    All named keywords are passed to the ``pyfits`` PrimaryHDU.  Any
+    remaining keywords are interpreted as card values.  See below for
+    the required cards.
     '''
 
-    schema_name = 'LimsMeta'
-    
-    #: Required cards for LIMS Meta data primary HDU
+    #: Additional required cards for LIMS Meta data primary HDU
     required_cards = [
         ('TESTNAME','Canonical name for the test result'),
         ('DATE-OBS','Time stamp of when test is run'),
@@ -26,47 +30,32 @@ class LimsMetaPrimaryHDU(pyfits.PrimaryHDU):
 
 class SoftwareTableHDU(pyfits.BinTableHDU):
     '''
-    Table HDU describing software run to produce a test result.
-
-    This holds columns of:
-    
-    - A GIT SHA1 commit hash
-    - A coresponding GIT tag label
-    - ......
+    Table HDU describing software that was run to produce a test result.
     '''
-    fixme()
+    #: The required columns to describe the running of the testing software.
+    required_columns = [
+        ('CommitHash','A64', 'The SHA1 hash of the GIT commit providing the software'), 
+        ('CommitTag', 'A64', 'The corresponding GIT commit tag'),   
+        ('RepoURL', 'A64', 'The URL pointing at the GIT repository'),  
+        ('ProgPath', 'A64', 'Path rooted in the repository to the main program'),   
+        ('CmdLine', 'A64', 'The command line argument string given to the main program'),    
+        ('ExitCode', 'J', 'The exit return code'),
+        ]
     pass
 
-#: The schema for a LIMS meta data file.
-#: 
-#: This consists of four HDUs.  In addition to the primary there are:
+#: The schema for a LIMS meta data file in the form of a list of HDU classes.
+#: In addition to the primary there are:
 #: 
 #: 1) ``lcatr.limsmeta.SoftwareTableHDU`` software descripion in the form of a GIT SHA1 commit has, tag and program name
 #: 
 #: 2) ``lcatr.common.FileRefTableHDU``, describing Result FITS files to be parsed into LIMS
 #: 
 #: 3) ``lcatr.common.FileRefTableHDU``, describing any auxiliary files to be linked into LIMS database
-schema = pyfits.HDUList([
-        LimsMetaPrimaryHDU(),
-        SoftwareTableHDU(),
-        common.FileRefTableHDU(),
-        common.FileRefTableHDU(),
-        ])
+schema = [
+    LimsMetaPrimaryHDU,
+    SoftwareTableHDU,
+    common.FileRefTableHDU,
+    common.FileRefTableHDU,
+    ]
 
 
-if __name__ == '__main__':
-    import datetime, time
-    import util
-
-    meta = LimsMetaPrimaryHDU(testname = 'TestLimsMeta')
-    meta.header.update('username','theycallmedog')
-    try:
-        meta.validate()
-    except ValueError, msg:
-        print msg
-        print 'Got error on validation of partial primary HDU as expected'
-        pass
-    now = datetime.datetime(*time.gmtime()[:6])
-    meta.header['date-obs'] = util.wash_card_value(now)
-    print meta.header
-    meta.validate()

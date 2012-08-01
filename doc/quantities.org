@@ -26,7 +26,7 @@ List of Data Products from EO single CCD tests
    - Number and List of column defects
    - Dark-current fits file, perhaps including masked regions.
 
-** Photon Transfer Curve
+** Linearity Function or Photon Transfer Curve
 
  - Script :: =ptc=
 

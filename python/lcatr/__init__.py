@@ -23,8 +23,9 @@ This package provides the following:
    module.
 
 Each LCATR-specific schema provides a module which bundles the schema
-elements.  All LCATR tests must also provide a result following
-``lcatr.limsmeta``.  Each file schema is available in a manner like:
+elements.  All LCATR tests must also provide information following the
+schema defined by ``lcatr.limsmeta``.  Each schema is available in a
+manner like:
 
   >>> import lcatr
   >>> nhdus = len(lcatr.limsmeta.schema)
@@ -38,24 +39,28 @@ The specific schema for each file describes and documents:
 
  - Required columns in an HDU's table unit.
 
-Validation is performed by running an HDU's (or HDUList's) ``validate()`` method:
+Validation is performed by running an HDU's (or HDUList's)
+``validate()`` method.  For example:
 
   >>> from lcatr.schema import PrimaryHDU
   >>> p = PrimaryHDU()
   >>> p.validate()
 
-A full schema for a file is built as a list (HDUlist) containing a
-primary HDU and zero or more secondary HDU classes.  Instances can be
-created and later filled or they can be read from file:
+A full schema for a file is built as a list (HDUlist) containing first
+a primary HDU and zero or more secondary HDU classes.  Instances can
+be created empty and later filled and writen to file or previously
+generated files can be read in for validation:
 
   >>> import lcatr.schema as pyfits
   >>> fp = pyfits.open("results.fits")
+  >>> fp.validate()
 
-FIXME: need to do something extra so the generic HDU classes read in
-can be replaced by schema-specific ones.
-
+the resulting HDUList returned by ``open()`` will contain instances of
+the ``lcatr`` schema HDU classes. A ValueError exception will be
+raised on failure.
 '''
 
 import base
+import common
 import limsmeta
 import gnc
