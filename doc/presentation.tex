@@ -148,10 +148,12 @@
   \frametitle{Metadata FITS File} 
 
   Collects information about all result files.  Here a ``test'' means
-  a run on a test station or an offline analysis.  Contains 4 HDUs:
+  a run on a test station or an offline analysis.  
+
+  Contains 4 HDUs:
 
   \begin{enumerate}
-  \item Primary HDU, header only.
+  \item Primary HDU, header only, (this will likely expand)
     \begin{description}
     \item[\texttt{TESTNAME}] a canonical name for the test.
     \item[\texttt{DATE\_OBS}] UTC time stamp for when the test was run.
@@ -175,28 +177,28 @@
 
   \vspace{2mm}
 
-  Follows a well defined schema:
+  Extends a base schema:
   \begin{enumerate}
   \item Common PrimaryHDU for all tests.
     \begin{description}
-    \item[\texttt{EXTNAME}] Canonical name for the test as a whole.
-    \item[\texttt{SCHEMAVER}] this HDU's schema version
+    \item[\texttt{TESTNAME}] Canonical name for the test as a whole.
+    \item[\texttt{EXTNAME}] the HDU schema name
+    \item[\texttt{EXTVER}] this HDU's schema version
     \end{description}
   \item Test-specific secondary HDUs with some common cards:
     \begin{description}
-    \item[\texttt{EXTNAME}] identify the schema that this HDU follows
-    \item[\texttt{SCHEMAVER}] this HDU's schema version
+    \item[\texttt{EXTNAME}] the HDU schema name
+    \item[\texttt{EXTVER}] this HDU's schema version
+    \item[...] all additional header cards and/or table columns needed
+      to hold part of a result
     \end{description}
+  \item Etc, as many secondary HDUs as needed to hold a test's result. 
+    \begin{itemize}
+    \item Each HDU follows a well defined schema.
+    \end{itemize}
   \end{enumerate}
 
-  \footnotesize
 
-  Many HDUs for the different types of results will share identical schema elements.
-
-  \vspace{2mm}
-
-  A table/data-only HDU still must provide a standard, minimal set of
-  cards in the header.
 \end{frame}
 
 \begin{frame}
@@ -221,7 +223,7 @@
   \vspace{5mm}
 
   \tiny
-  (last two just added yesterday)
+  (this is out of date by about a week)
 
 \end{frame}
 
@@ -231,21 +233,26 @@
 \begin{frame}
   \frametitle{Schema Definition in Python}
 
-  Steps to defining and validating a FITS schema for our results.
+  Implementing a FITS schema in Python
 
   \vspace{5mm}
 
   \begin{enumerate}
-  \item Adopt \texttt{pyfits} classes to get valid FITS format by-construction.
-  \item Enforce our specific schema by adding a \texttt{validate()} method:
+  \item Subclass \texttt{pyfits} HDU classes to 
     \begin{itemize}
-    \item existing \texttt{pyfits.*HDU} classes (bolt-on) for common
-      validation code.
-    \item subclass \texttt{pyfits.*HDU} classes for test-specific
-      validation code.
+    \item[$\Rightarrow$] valid low-level FITS format, by construction.
     \end{itemize}
-  \item Implement a Python module for each test station's results that
-    hard-codes its specific schema.
+  \item Add a \texttt{validate()} method.
+    \begin{itemize}
+    \item Basic validation in intermediate subclasses
+    \item Additional validation in further, per-test subclasses
+    \end{itemize}
+  \item One Python module for each test result
+    \begin{itemize}
+    \item  Schema defined as hard-coded list of classes
+    \end{itemize}
+  \item Replace \texttt{pyfits.open()} to allow customized classes to
+    be used when reading in FITS files.
   \end{enumerate}
 
 \end{frame}
@@ -253,217 +260,118 @@
 \begin{frame}
   \frametitle{Current Status of Implementation}
 
-  Now:
+  Status:
   \begin{itemize}
-  \item Some basic validation code exists.
-  \item Focused on JimF's example data.
+  \item Basic skeleton exists.
+  \item Unit tests written with partial coverage.
+  \item Metadata file schema implemented.
+  \item JimF's photon transfer curve linearity results partially
+    implemented
     \begin{itemize}
-    \item Schema classes written
-    \item Simple validation
-    \item Read/write FITS file
+    \item Result specification still ongoing
+    \item Jim will likely be first Guinea Pig to use schema classes directly
     \end{itemize}
-  \end{itemize}
-
-  \vspace{2mm}
-
-  Some items still to do on the short term:
-
-  \begin{itemize}
-  \item Implement versioning to allow schema evolution, if needed (?)
-  \item Emit SQL for table creation.  Ties in to schema evolution.
+  \item Some basic validation code written for the existing schema. 
+  \item Documentation at:\\
+    {\footnotesize
+    \url{http://www.phy.bnl.gov/~bviren/lsst/lcatr/doc/lcatr/build/html/}}
+  \item Code at:\\
+    {\footnotesize
+    \url{https://github.com/brettviren/lcatr}}
   \end{itemize}
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-  \frametitle{The LSST CCD Acceptance Testing Results package: \texttt{lcatr}}
-  \begin{description}
-  \item[\texttt{lcatr.schema}] import all of \texttt{pyfits} and
-    bolt-on the \texttt{validate()} methods.
-    \begin{itemize}
-    \item [$\rightarrow$] code should do ``\texttt{import lcatr.schema}'' before using any \texttt{pyfits} objects.
-    \end{itemize}
-  \item[\texttt{lcatr.gnc}] definitions for JimF's Gain/Noise/ColdSpots results
-  \item[\texttt{lcatr.<test>}] each station will have its own in a similar manner
-  \end{description}
-
-  For now, code is maintained at:
-  \begin{center}
-    \url{https://github.com/brettviren/lcatr}    
-  \end{center}
-\end{frame}
-
-\begin{frame}[fragile]
-  \frametitle{Jim's G/N/C Example in the Schema}
+  \frametitle{Example: The Metadata schema}
 
   Construct an unfilled schema (only convention-required content added).
 
-  \begin{lstlisting}[emph={GncInputFilesHDU,GncResult,schema,TableHDU,Column}]
-#...
-class GncInputFilesHDU(schema.TableHDU):
-    def __init__(self, filelist = None, sha1list = None, version = 0):
-        super(GncInputFilesHDU,self).__init__()
-        self.update_ext_name('FileRefs')
-        self.update_ext_version(version)
-        fc = schema.Column(name='FileName', format='A64', array=filelist)
-        hc = schema.Column(name='SHA1Hash', format='A64', array=sha1list)
-        self.columns = schema.ColDefs([fc,hc])
-        return
-    pass
-#...
-class GncResult(schema.HDUList):
-    def __init__(self):
-        super(GncResult,self).__init__(hdus = [
-                GncPrimaryHDU(),
-                GncInputFilesHDU(),
-                GncGainsHDU(),
-                GncNoiseHDU(),
-                GncColdSpotsHDU(),
-                ])
-        return
-    pass
+  \begin{lstlisting}[emph={required_cards,required_columns,schema}]
+class LimsMetaPrimaryHDU(pyfits.PrimaryHDU):
+    required_cards = [
+        ('TESTNAME','Canonical name for the test result'),
+        ('DATE-OBS','Time stamp of when test is run'),
+        ('USERNAME','Name of operator/analyzer performing test'),
+        ]
+# ...
+class LimsMetaSoftwareTableHDU(pyfits.BinTableHDU):
+    required_columns = [
+        ('CommitHash','A64', 'The SHA1 hash of the GIT commit providing the software'), 
+        ('CommitTag', 'A64', 'The corresponding GIT commit tag'),   
+        ('RepoURL', 'A64', 'The URL pointing at the GIT repository'),  
+        ('ProgPath', 'A64', 'Path rooted in the repository to the main program'),   
+        ('CmdLine', 'A64', 'The command line argument string given to the main program'),    
+        ('ExitCode', 'J', 'The exit return code'),
+        ]
+# ... [snip] ... #
+schema = [LimsMetaPrimaryHDU,LimsMetaSoftwareTableHDU,
+          LimsMetaResultFilesHDU,LimsMetaAuxiliaryFilesHDU]
   \end{lstlisting}
   \footnotesize
   \begin{itemize}
-  \item   Hard-code GNC's expectation of what HDUs/Columns/Cards/etc are expected.
-  \item   Additional GNC-specific validation code can added to these HDU classes.
-
+  \item Primary and first secondary HDU shown
+  \item Most schema defines required cards/columns and provides any
+    required card values.
+  \item Full schema for the file is defined as a list of HDU classes.
   \end{itemize}
 \end{frame}
-
-\begin{frame}[fragile]
-  \frametitle{Closer look at the \texttt{pyfits} Bolt-ons}
-
-  \begin{lstlisting}[emph={PrimaryHDU_validate,TableHDU_validate,PrimaryHDU,TableHDU,validate}]
-# in lcatr.schema
-from pyfits import *
-
-def PrimaryHDU_validate(self):
-  self.verify()               # pyfits-level verify
-  for name in ['EXTNAME','EXTVER']: 
-    self.header[name]         # just a lookup to trigger a check
-  return
-PrimaryHDU.validate = PrimaryHDU_validate  # bolt-on
-
-def TableHDU_validate(self):
-  self.verify()
-  for name in ['EXTNAME','EXTVER']: 
-    self.header[name]
-  if not len(self.columns):
-    raise ValueError,'TableHDU "%s": no columns' % self.name
-  if not all([c.array for c in self.columns]):
-    raise ValueError, 'TableHDU "%s": not all columns have arrays' % self.name
-  return
-TableHDU.validate = TableHDU_validate  # bolt-on
-  \end{lstlisting}
-  \begin{itemize}
-  \item Define \texttt{validate()} method and bolt on to \texttt{pyfits.PrimaryHDU} class.
-  \item Require standard name and version cards.
-  \item Expect this to expand as we learn more about the data.
-  \end{itemize}
-\end{frame}
-
 
 \begin{frame}[fragile]
   \frametitle{Example of Filling the GNC Schema}
   
   Filling from code:
   \begin{lstlisting}
-    gnc = GncResult()
-    gnc['Gains'].columns[0].array = [2.5122094, 2.8183959, 2.5010307, ...]
-    gnc['Gains'].columns[1].array = [2.6737275, 2.7658350, 2.6715354, ...]
-    # ...
-    gnc.validate()
+hdus = pyfits.HDUList([
+  lcatr.limsmeta.schema[0](
+    testname = 'TestLimsMetaData',
+    date_obs = datetime.datetime(*time.gmtime()[:6]),
+    username = os.environ.get('USER','testuser')),
+
+lcatr.limsmeta.schema[1](
+  commithash = [sha1().hexdigest(),],
+  committag = ['TheGitTag',],
+  repourl = ['git://github.com/brettviren/lcatr/',],
+  progpath = ['test1/mainprog',],
+  cmdline = ['./test1/mainprog arg1 arg2',],
+  exitcode = [0,]),
   \end{lstlisting}
 
-  Some convenience methods can be added for a nicer filling interface,
-  but this shows underlying idea.
+  Fill at construction time using card or column names as keyword arguments.
 
   \vspace{3mm}
 
-  Filling and validating a file that is already produced:
+  Or, use schema aware version of \texttt{pyfits.open()} fill from file.
 
   \begin{lstlisting}
-    import lcatr.schema
+    import lcatr        # replaces/overrides parts of pyfits
     import pyfits
-    gnc = pyfits.open("gnc.root")
-    gnc.validate()
+    f = pyfits.open("testfile.fits")
+    f.validate()
   \end{lstlisting}
 \end{frame}
 
-\section{Questions and Open Issues}
+\section{To Do}
 
 \begin{frame}
-  \frametitle{Questions on this concept}
+  \frametitle{To Do}
   \begin{itemize}
-  \item How many test stations/analyzers work in Python?  
+  \item Still understanding the result data from the test stations and analyses.
     \begin{itemize}
-    \item We will need intermediate scripts to generate compliant
-      Results FITS files from the others.
+    \item Not practical to use the Python schema directly in all cases.
+    \item Will develop conversion/summation scripts in these cases.
     \end{itemize}
-  \item How likely will it be that the schema needs to evolve over
-    time?
+  \item Schema evolution handling needs implementing.
+  \item Job harness system at the concept stage.
     \begin{itemize}
-    \item If we can guarantee all tests produce the same type of data,
-      life is easier.
+    \item Will leverage GIT and environment ``modules''.
     \end{itemize}
-  \item What else?
-  \end{itemize}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Input Needed}
-  \begin{itemize}
-  \item Any criticism on this high-level design so far.
-  \item A detailed description of the information expected from each
-    test station and analyzer.
+  \item Still fuzzy on:
     \begin{itemize}
-    \item To the level of types and quantity of all data.
-    \item Developing each result's schema will require iteration.
-    \item I will handle producing a unified document covering the
-      information produced from all tests based on what I get.
+    \item How to handle calibration information?
+    \item How to handle environment monitoring data?
     \end{itemize}
-  \item Work with each test operator/analyzer to help them adopt this
-    schema for their results.
-    \begin{itemize}
-    \item I will help integrate the \texttt{lcatr} package into your
-      Python-based tests and/or will help write any needed
-      generator/converter scripts for tests that do not use Python.
-    \end{itemize}
-  \item We need a stable, reasonably shallow and well defined disk
-    area common to (at least) test stations and database ingest
-    client.
-  \end{itemize}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Some Open Issues That Need Thought}
-
-  At the not-yet-even-conceptual level (at least in my own head):
-
-  \begin{itemize}
-  \item How to handle test station calibration data.
-    \begin{itemize}
-    \item Need detailed list of what this data is.
-    \item Maybe we can handle in a similar way as the main result
-      data.
-    \end{itemize}
-  \item How to handle environmental (netbotz) information.
-    \begin{itemize}
-    \item Netbotz appliances apparently have both push (HTTP POST and
-      FTP) and pull (web service query) delivery
-    \item What type of data must be collected?  What is simply
-      archived and what is put in the DB?
-    \item Archive frequency?
-    \item Assure proper subsequent lookup on timestamp.
-      \begin{itemize}
-      \item Is NTP running on all test stations and ``netbotz''?
-      \item What ongoing assurance that clocks stay synced?
-      \end{itemize}
-    \end{itemize}
-  \item Who writes the collection software and designs the database
-    table schema?  
   \end{itemize}
 \end{frame}
 
