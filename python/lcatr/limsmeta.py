@@ -28,7 +28,29 @@ class LimsMetaPrimaryHDU(pyfits.PrimaryHDU):
         ]
     pass
 
-class SoftwareTableHDU(pyfits.BinTableHDU):
+class LimsMetaResultFilesHDU(common.FileRefTableHDU):
+    '''
+    HDU to describe the test summary result files.
+    '''
+    def __init__(self, data=None, header=None, name=None, **kwds):
+        base = super(LimsMetaResultFilesHDU,self)
+        base.__init__(data=None, header=None, name=None, 
+                      filedesc = 'Result FITS files for parsing into the database',**kwds)
+        return
+
+class LimsMetaAuxiliaryFilesHDU(common.FileRefTableHDU):
+    '''
+    HDU to describe the test auxiliary result files.
+    '''
+    def __init__(self, data=None, header=None, name=None, **kwds):
+        base = super(LimsMetaResultFilesHDU,self)
+        base.__init__(data=None, header=None, name=None, 
+                      filedesc = 'Auxiliary files from the test',**kwds)
+        return
+
+
+
+class LimsMetaSoftwareTableHDU(pyfits.BinTableHDU):
     '''
     Table HDU describing software that was run to produce a test result.
     '''
@@ -53,9 +75,9 @@ class SoftwareTableHDU(pyfits.BinTableHDU):
 #: 3) ``lcatr.common.FileRefTableHDU``, describing any auxiliary files to be linked into LIMS database
 schema = [
     LimsMetaPrimaryHDU,
-    SoftwareTableHDU,
-    common.FileRefTableHDU,
-    common.FileRefTableHDU,
+    LimsMetaSoftwareTableHDU,
+    LimsMetaResultFilesHDU,
+    LimsMetaAuxiliaryFilesHDU
     ]
 
 

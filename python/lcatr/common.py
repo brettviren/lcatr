@@ -16,6 +16,11 @@ class FileRefTableHDU(pyfits.BinTableHDU):
 
     '''
     
+    #: Required cards to describe the collection of file references
+    required_cards = [
+        ('FileDesc','Description of the collection of referenced files'),
+        ]
+
     #: Required columns to described file references.
     required_columns = [
         ('FileName', 'A64','The referenced file paths.'), 

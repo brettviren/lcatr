@@ -43,17 +43,37 @@ provides information about the gain (electrons to adu)
 
  - Results ::
 
-   - Noise (two methods) ADU per amplifier
-   - Gain (two methods) e/ADU per amplifier
-   - Dark (cold) pixels number and location
-   - Full well
-   - Illumination correction parameters (quadratic fit?)
-   - Edge response maps
-   - PRNU (photo response non uniformity) per amp (entire imaging area, after illumination correction)
-   - PRNU per amp (after illumination, edge correction)
-   - Deviation from linear response (fractional deviation of ADU/sec) from ~100e to ~90% of full well
-   - CTE (charge transfer efficiency, = 1- average chage that gets lost as the buckets of charge gets read out) at three ADU (or gain) (ADU is like ADC, "analogue to digital units"?) values based upon overscan
+   - Noise :: (two methods) ADU per amplifier (two 'E' columns)
+   - Gain :: (two methods) e/ADU per amplifier (two 'E' columns)
+   - Dark :: (cold) pixels number and location (special table)
+   - Full well ::
+     - =LinRangeMin= 'E' 'Minimum ADU in which CCD stays within LinearSpecs'
+     - =LinRangeMax= 'E' 'Maximum ADU in which CCD stays within LinearSpecs'
+     - =LinearResponse= 'E' 'Maximum deviation from linear response in Full LinRange’
+
+   - Illumination correction parameters (quadratic fit?) :: 6 parameters, quadratic in X and Y
+     - Not saved yet
+
+   - Edge response maps :: not yet well defined
+     - Not saved yet
+     - expect systematic differences in 4/16, might save CCD average
+
+   - PRNU :: photo response non uniformity per amp (entire imaging area, after illumination correction)
+     - =PRNUTotal= and =PRNUCorrected= x =White= and =Mid=
+     - May also want two per-CCD numbers (total and corrected)
+
+   - Deviation from linear response :: 3 numbers 
+     - =LinRangeMin=, =LinRangeMax=, =LinRangeResponse=
+     - fractional deviation of ADU/sec from ~100e to ~90% of full well
+
+   - CTE :: =CTEoverscanA_N= for A in (X,Y) and N in (1,2,3)
+     - Better to set A to the actual threshold
+     - Store as cards unless threshold will not stay fixed over life of testing
+     - charge transfer efficiency
+     - is: (1- average chage that gets lost as the buckets of charge gets read out) at three ADU (or gain) (ADU is like ADC, "analogue to digital units"?) values based upon overscan
+
    - Flat field fits file, perhaps including masks
+     - Not to be stored in DB
 
 ** Quantum Efficiency
 

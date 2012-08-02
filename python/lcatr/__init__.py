@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 '''
 LSST CCD Acceptance Testing Result (LCATR)
+==========================================
 
 This package provides the following:
 
@@ -58,9 +59,10 @@ generated files can be read in for validation:
 the resulting HDUList returned by ``open()`` will contain instances of
 the ``lcatr`` schema HDU classes. A ValueError exception will be
 raised on failure.
+
 '''
 
 import base
 import common
 import limsmeta
-import gnc
+import ptc
