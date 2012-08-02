@@ -64,10 +64,8 @@ FullWell = [
 
 
 #: Not yet provided, but specified.
-PRNUTotalWhite = [0.0]*16
-PRNUTotalMid  = [0.0]*16
-PRNUCorrectedWhite = [0.0]*16
-PRNUCorrectedMid = [0.0]*16
+PRNUTotal  = [0.0]*16
+PRNUCorrected = [0.0]*16
 LinRangeMin = [0.0]*16
 LinRangeMax = [0.0]*16
 LinearResponse = [0.0]*16

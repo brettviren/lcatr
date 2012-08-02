@@ -39,10 +39,8 @@ def test_ptc():
                 fullwell = tpd.FullWell,
                 linearrangemin = tpd.LinearRangeMin,
                 linearrangemax = tpd.LinearRangeMax,
-                prnutotalwhite = tpd.PRNUTotalWhite,
-                prnutotalmid = tpd.PRNUTotalMid,
-                prnucorrectedwhite = tpd.PRNUCorrectedWhite,
-                prnucorrectedmid = tpd.PRNUCorrectedMid,
+                prnutotal = tpd.PRNUTotal,
+                prnucorrected = tpd.PRNUCorrected,
                 linrangemin = tpd.LinRangeMin,
                 linrangemax = tpd.LinRangeMax,
                 linearresponse = tpd.LinearResponse
