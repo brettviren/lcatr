@@ -15,6 +15,9 @@ Contents:
    schema
    api/lcatr
 
+`Source code <https://github.com/brettviren/lcatr>`_
+
+
 Indices and tables
 ==================
 
