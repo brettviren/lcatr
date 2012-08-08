@@ -57,3 +57,30 @@ def sha1_digest(filename):
     path = full_path(filename)
     if not path: return None
     return hashlib.sha1(open(path).read())
+
+
+def fitsverify(filename):
+    '''
+    Run fitsverify on file of given name.  
+
+    If verification fails, return list of error strings.
+
+    The ``fitsverify`` program must be in the PATH.  It is obtained from:
+
+    https://heasarc.gsfc.nasa.gov/docs/software/ftools/fitsverify/
+    '''
+    from subprocess import Popen, PIPE
+    proc = Popen(['fitsverify',filename], stdout=PIPE, stderr=PIPE)
+    out,err = proc.communicate()
+    if not proc.returncode:
+        return None
+
+    ret = []
+    for line in err.split('\n'):
+        line = line.strip()
+        if not line: continue
+        ret.append(' '.join(line.split()[1:]))
+        continue
+    return ret
+
+    

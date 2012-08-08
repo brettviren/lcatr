@@ -220,7 +220,10 @@ Each subclass should define a ``.required_columns`` class data member which hold
         for count,(name,typestr,comment) in enumerate(self.required_columns):
             kwname = name.lower().replace('-','_')
             array = kwds.get(kwname,list())
-            col = pyfits.Column(name=name, format=typestr, array=array, start=count+1)
+            #col = pyfits.Column(name=name, format=typestr, array=array, start=count+1)
+            # fitsverify complains about "TBCOLn is not allowed in the Binary table."
+            # if start= is specified.
+            col = pyfits.Column(name=name, format=typestr, array=array)
             cols.append(col)
             continue
         self.columns = pyfits.ColDefs(cols)
