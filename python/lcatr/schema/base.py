@@ -378,13 +378,13 @@ def hdu_pyfits2lcatr(hdu):
     '''
     Return an ``lcatr`` version of the plain pyfits HDU.
     '''
-    import lcatr
-    module = type(lcatr)
+    import lcatr.schema
+    module = type(lcatr.schema)
 
     schema_name = hdu.header['EXTNAME']
 
-    for thing in dir(lcatr):
-        mod = lcatr.__dict__[thing]
+    for thing in dir(lcatr.schema):
+        mod = lcatr.schema.__dict__[thing]
         if not isinstance(mod,module): 
             continue
 

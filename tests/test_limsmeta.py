@@ -3,7 +3,7 @@
 Test the LIMS meta data schema
 '''
 
-import lcatr
+import lcatr.schema
 import pyfits
 
 import os
@@ -17,14 +17,14 @@ def test_limsmeta():
     # define schema and fill it at the same time
     hdus = pyfits.HDUList([
         # primary
-        lcatr.limsmeta.schema[0](
+        lcatr.schema.limsmeta.schema[0](
             testname = 'TestLimsMetaData',
             date_obs = datetime.datetime(*time.gmtime()[:6]),
             username = os.environ.get('USER','testuser')            
             ),
         
         # SoftwareTableHDU:
-        lcatr.limsmeta.schema[1](
+        lcatr.schema.limsmeta.schema[1](
             commithash = [sha1().hexdigest(),],
             committag = ['TheGitTag',],
             repourl = ['git://github.com/brettviren/lcatr/',],
@@ -34,13 +34,13 @@ def test_limsmeta():
             ),
 
         # Result fits files
-        lcatr.limsmeta.schema[2](
+        lcatr.schema.limsmeta.schema[2](
             filename = [__file__,],
             sha1hash = [None],
             ),
 
         # Aux files
-        lcatr.limsmeta.schema[2](),
+        lcatr.schema.limsmeta.schema[2](),
         ])
     hdus[2].generate()
     hdus[3].generate()

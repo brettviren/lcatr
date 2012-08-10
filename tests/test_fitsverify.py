@@ -4,7 +4,7 @@ Test util.fitsverify
 '''
 
 import pyfits
-from lcatr.util import fitsverify
+from lcatr.schema.util import fitsverify
 
 good_file = 'test_fitsverify_good.fits'
 bad_file = 'test_fitsverify_bad.fits'

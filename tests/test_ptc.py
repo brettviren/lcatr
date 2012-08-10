@@ -3,7 +3,7 @@
 Test making a PTC FITS file.
 '''
 import os
-import lcatr
+import lcatr.schema
 import pyfits
 
 import time
@@ -18,20 +18,20 @@ def test_ptc():
     hdus = pyfits.HDUList([
             
         # primary hdu
-        lcatr.ptc.schema[0](
+        lcatr.schema.ptc.schema[0](
                 testname = 'TestPTC',
                 date_obs = datetime.datetime(*time.gmtime()[:6]),
                 username = os.environ.get('USER','testuser')            
                 ),
         
         # input files
-        lcatr.ptc.schema[1](
+        lcatr.schema.ptc.schema[1](
                 filename = [__file__,], # fake it
                 sha1hash = [None]
                 ),
 
         # per-amp numbers
-        lcatr.ptc.schema[2](
+        lcatr.schema.ptc.schema[2](
                 lineargain = tpd.LinearGain,
                 mediangain = tpd.MedianGain,
                 overscannoise = tpd.OverScanNoise,
@@ -47,7 +47,7 @@ def test_ptc():
                 ),
         
         # cold spots
-        lcatr.ptc.schema[3](
+        lcatr.schema.ptc.schema[3](
                 ampnum = tpd.ampnum,
                 pixcount = tpd.pixcount,
                 spotx = tpd.spotx,

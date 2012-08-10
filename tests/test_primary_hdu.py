@@ -2,7 +2,7 @@
 '''
 Test some things about a primary HDU
 '''
-from lcatr.base import *
+from lcatr.schema.base import *
 
 def test_PrimaryHDU():
     print 'PrimaryHDU type: "%s"' % PrimaryHDU
