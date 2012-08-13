@@ -1,0 +1,308 @@
+\documentclass[xcolor=dvipsnames]{beamer}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{fixltx2e}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{float}
+\usepackage{wrapfig}
+\usepackage{soul}
+\usepackage{textcomp}
+\usepackage{marvosym}
+\usepackage{wasysym}
+\usepackage{latexsym}
+\usepackage{amssymb}
+\usepackage{hyperref}
+\usepackage{cancel}
+\usepackage[percent]{overpic}
+\usepackage{listings}
+\usepackage{color}
+\lstset{ %
+  language=Python,
+  basicstyle=\ttfamily\tiny,
+  emphstyle=\color{red},
+  keywordstyle=\color{black}\bfseries,
+  identifierstyle=\color{DarkOrchid}\ttfamily,
+  commentstyle=\color{Brown}\rmfamily\itshape,
+  stringstyle=\color{blue}\slshape,
+  showstringspaces=false,
+  frame=single,                   % adds a frame around the code
+}
+
+\setbeamertemplate{navigation symbols}{}
+\useoutertheme{infolines}
+\usecolortheme[named=violet]{structure}
+\setbeamertemplate{items}[circle]
+
+\DeclareGraphicsExtensions{.pdf,.png,.jpg}
+\title[Data Handling]{CCD Acceptance Testing Data Handling}
+\author{Brett Viren and Tom Throwe}
+\institute[BNL]
+{
+  Physics Department
+
+  \includegraphics[height=1.5cm]{bnl-logo}
+}
+
+\date{\today}
+
+\definecolor{rootpink}{RGB}{255,0,255}
+\definecolor{macroyellow}{RGB}{255,215,0}
+
+\hypersetup{
+  pdfkeywords={},
+  pdfsubject={},
+  pdfcreator={pdflatex, beamer and emacs the digital blood, sweat and tears}}
+
+\begin{document}
+
+\maketitle
+
+\begin{frame}
+\frametitle{Outline}
+\tableofcontents
+\end{frame}
+
+\section{Overview}
+
+\begin{frame}[fragile]
+  \frametitle{High Level Data Flow}
+  \includegraphics[width=\textwidth]{dataflow}
+  \begin{enumerate}
+  \item Test stations and analysis codes produces result files.
+  \item All result files are stored permanently to a well defined disk
+    location.
+    \begin{itemize}
+    \item Portability via rooting at \texttt{\$CCDTEST\_ROOT}
+    \end{itemize}
+  \item Specially formatted result summary files are validated, parsed
+    and their contents are uploaded to the database.
+  \end{enumerate}
+
+  \footnotesize
+  By using intermediate files in a common, popular format we can make
+  a loose coupling between the test stations and analyzers and the
+  database.  This will make supporting the varied test platforms and
+  environments simpler.
+\end{frame}
+
+\section{Job Harness}
+
+\begin{frame}[fragile]
+  \frametitle{Job Harness - Version Control} 
+
+  Assure the capture of software versions, input parameters, runtime
+  environment and output results.
+
+  \begin{columns}
+    \begin{column}{0.5\paperwidth}
+      \begin{itemize}
+      \item Tests run by a common job harness (GNU/Linux and Windows).
+      \item Record input parameters.
+      \item All software versions recorded by (GIT) commit hash.
+      \item Invokes the test software.
+      \item Post-processing if needed to produce required interchange
+        file format.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.5\paperwidth}
+      \includegraphics[width=\textwidth]{job-harness}
+    \end{column}
+  \end{columns}
+
+  \vspace{2mm}
+
+  $\rightarrow$Currently at the conceptual level.
+\end{frame}
+
+\section{Test Result Files}
+
+\begin{frame}
+  \frametitle{Station Results}
+
+  Station or analysis software produces result files in three categories:
+
+  \begin{columns}
+    \begin{column}{0.5\paperwidth}
+      \footnotesize
+      \begin{description}
+      \item[Metadata FITS] Describes test software and enumerates results
+        files and any auxiliary files.  (well defined schema)
+      \item[Result FITS] Result summary files to be parsed and uploaded
+        into the DB. (well defined schema)
+      \item[Auxiliary] Any additional files to archive. These may
+        contain some info that is redundant to the above (arbitrary
+        formats)
+      \end{description}
+    \end{column}
+    \begin{column}{0.4\paperwidth}
+      \includegraphics[width=\textwidth]{files}
+    \end{column}
+  \end{columns}
+  All files are archived, first two types are parsed into the database.
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{Metadata FITS File} 
+
+  Collects information about all result files.  Here a ``test'' means
+  a run on a test station or an offline analysis.  
+
+  Contains 4 HDUs:
+
+  \begin{enumerate}
+  \item Primary HDU, header only, (this will likely expand)
+    \begin{description}
+    \item[\texttt{TESTNAME}] a canonical name for the test.
+    \item[\texttt{DATE-OBS}] UTC time stamp for when the test was run.
+    \item[\texttt{USERNAME}] Name for the test station operator or analyzer.
+    \end{description}
+  \item Test's \textbf{software description} consisting of list of main
+    programs and their GIT SHA1 commit hash and tag.  Lists are stored
+    in a FITS table.
+  \item List of \textbf{Result FITS files} to be parsed into the database (see next).
+    Stored as a table of filenames and content SHA1 digest hashes.
+  \item List of all \textbf{auxiliary files} to be referenced from the
+    database.  Lists stored in same form as \#3.
+  \end{enumerate}
+
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{Result FITS File}
+  Collects all result data that will be parsed into the database.
+
+  \vspace{2mm}
+
+  Skeleton is simple:
+  \begin{enumerate}
+  \item Common PrimaryHDU for all tests.
+    \begin{description}
+    \item[\texttt{TESTNAME}] Canonical name for the test as a whole.
+    \item[\texttt{EXTNAME}] the HDU schema name
+    \item[\texttt{EXTVER}] this HDU's schema version
+    \end{description}
+  \item Test-specific secondary HDUs with some common cards:
+    \begin{description}
+    \item[\texttt{EXTNAME}] the HDU schema name
+    \item[\texttt{EXTVER}] this HDU's schema version
+    \item[...] all additional header cards and/or table columns needed
+      to hold part of a result
+    \end{description}
+  \item Etc, as many secondary HDUs as needed to hold a test's result. 
+    \begin{itemize}
+    \item Each HDU follows a well defined schema.
+    \end{itemize}
+  \end{enumerate}
+
+  The schema for each station/analysis result extends this base as
+  needed.
+\end{frame}
+
+
+
+\section{Schema Representation In Python}
+
+\begin{frame}
+  \frametitle{Schema Definition in Python}
+
+  Implementing a FITS schema in Python
+
+  \vspace{5mm}
+
+  \begin{enumerate}
+  \item Subclass \texttt{pyfits} HDU classes to 
+    \begin{itemize}
+    \item[$\Rightarrow$] achieve valid low-level FITS format, by construction.
+    \end{itemize}
+  \item Add a \texttt{validate()} method.
+    \begin{itemize}
+    \item Low-level, common validation in intermediate subclasses
+    \item Additional validation in per-test, leaf subclasses
+    \end{itemize}
+  \item One Python module for each test result
+    \begin{itemize}
+    \item  Schema defined as hard-coded list of classes
+    \end{itemize}
+  \item Replace \texttt{pyfits.open()} to allow reading in and validating compliant files.
+  \end{enumerate}
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{Current Status of Schema Implementation}
+
+  Status:
+  \begin{itemize}
+  \item Basic skeleton exists.
+  \item Unit tests written with partial coverage.
+  \item Metadata file schema implemented.
+  \item Jim Frank's photon transfer curve linearity analysis results partially
+    implemented
+  \item Some basic validation code written for the existing schema. 
+  \item Documentation temporarily at:\\
+    {\footnotesize
+    \url{http://www.phy.bnl.gov/~bviren/lsst/lcatr/doc/lcatr/build/html/}}
+  \item Code temporarily at:\\
+    {\footnotesize
+    \url{https://github.com/brettviren/lcatr}}
+  \end{itemize}
+
+\end{frame}
+
+\section{A Bit About Git}
+
+\begin{frame}
+  \frametitle{Usage of Git repositories}
+  
+  \begin{itemize}
+  \item A set of git repositories local to the testing institutions will be used.
+    \begin{itemize}
+    \item RACF setup mostly complete, provide central repos
+    \item Other tests sites will clone.
+    \item Anticipate cloning to SLAC's Git area for archive.
+    \end{itemize}
+  \item All test station and analysis code will be in git repositories
+    \begin{itemize}
+    \item Git commit hash used to indelibly mark the versions used.
+    \item Issues with ever-changing files (eg Mathematica) need addressing.
+    \item Any proprietary code will have its binaries committed.
+    \end{itemize}
+  \item High level data handling code.
+    \begin{itemize}
+    \item Schema validation, database and web application, job harness.
+    \item Currently at github.com, will move to RACF.
+    \end{itemize}
+  \end{itemize}
+  
+\end{frame}
+
+\section{To Do}
+
+\begin{frame}
+  \frametitle{To Do}
+  \begin{itemize}
+  \item Still understanding the details of the data schema covering
+    the various test stations and analyses.
+    \begin{itemize}
+    \item Not practical to use the Python schema directly in all cases.
+    \item Will develop conversion/summation scripts in these cases.
+    \end{itemize}
+  \item Schema evolution handling needs implementing.
+  \item Job harness system at the concept stage.
+    \begin{itemize}
+    \item Will leverage GIT and maybe use modules.sf.net to
+      set/capture environment.
+    \end{itemize}
+  \item Still fuzzy on:
+    \begin{itemize}
+    \item How to handle calibration information?
+    \item How to handle environment monitoring data?
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\end{document}
+
