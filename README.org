@@ -1,0 +1,21 @@
+LSST CCD Acceptance Testing Results
+
+* Overview
+
+This package provides the software to manage the production tests and
+analysis for the LSST CCDs and handle their results.  It provides for
+
+ - harness :: a test job management system
+ - database :: a backend database of result summaries
+ - web :: a web front end for querying results
+ - schema :: test result summary files in well defined and validated format, input to database filling
+
+
+* Software repository:
+
+  http://www.phy.bnl.gov/~bviren/lsst/lcatr/doc/lcatr/build/html/
+
+* Links
+
+ * http://packages.python.org/pyfits/
+ * http://fits.gsfc.nasa.gov/fits_verify.html
